@@ -20,6 +20,7 @@ package config
 // Logger Reports - Plain text based for SMTP too
 //==================================================================================================
 
+// LoggerKeystoreReport is a template constant that provides the overall structure of the KeystoreSentinel STDOUT Logger report
 const LoggerKeystoreReport = `{{ .Divider }}
 KeystoreSentinel Report: {{ .Namespace }}/{{ .Name }} ({{ .DateSent }})
 {{ .Divider }}
@@ -38,12 +39,14 @@ KeystoreSentinel Report: {{ .Namespace }}/{{ .Name }} ({{ .DateSent }})
 {{ .Divider }}
 `
 
+// LoggerKeystoreReportLine is a template constant provides the template of each individual tabulated and delimited line in a KeystoreSentinel STDOUT Logger report that represents an identified expiring certificate in keystores
 const LoggerKeystoreReportLine = `| {{ .APIVersion }} | {{ .Kind }} | {{ .Namespace }} | {{ .Name }} | {{ .Key }} | {{ .KeystoreAlias }} | {{ .CommonName }} | {{ .IsCA }} | {{ .CertificateAuthorityCommonName }} | {{ .ExpirationDate }} | {{ .TriggeredDaysOut }} |
 `
 
+// LoggerKeystoreReportHeader is a template constant provides the template of the tabulated and delimited table header (and footer, technically) columns in a KeystoreSentinel STDOUT Logger report
 const LoggerKeystoreReportHeader = `| {{ .APIVersion }} | {{ .Kind }} | {{ .Namespace }} | {{ .Name }} | {{ .Key }} | {{ .KeystoreAlias }} | {{ .CommonName }} | {{ .IsCA }} | {{ .CertificateAuthorityCommonName }} | {{ .ExpirationDate }} | {{ .TriggeredDaysOut }} |`
 
-// loggerReportStructure provides the overall structure to the loggerReport template
+// LoggerKeystoreReportStructure provides the overall data structure to the KeystoreSentinel STDOUT LoggerKeystoreReport template
 type LoggerKeystoreReportStructure struct {
 	Namespace          string
 	Name               string
@@ -59,7 +62,7 @@ type LoggerKeystoreReportStructure struct {
 	Divider            string
 }
 
-// LoggerReportHeaderStructure provides the structure for the LoggerReport header
+// LoggerKeystoreReportHeaderStructure provides the data structure for the KeystoreSentinel LoggerKeystoreReport header (and footer, technically)
 type LoggerKeystoreReportHeaderStructure struct {
 	APIVersion                     string
 	Kind                           string
@@ -74,7 +77,7 @@ type LoggerKeystoreReportHeaderStructure struct {
 	TriggeredDaysOut               string
 }
 
-// loggerReportLineStructure provides the struct for the loggerReportLine template
+// LoggerKeystoreReportLineStructure provides the data structure for the KeystoreSentinel LoggerKeystoreReportLine template
 type LoggerKeystoreReportLineStructure struct {
 	APIVersion                     string
 	Kind                           string
@@ -90,18 +93,10 @@ type LoggerKeystoreReportLineStructure struct {
 }
 
 //==================================================================================================
-// SMTP HTML Reports
+// SMTP HTML KeystoreSentinel Report Objects
 //==================================================================================================
 
-const TextSMTPKeystoreReportDocument = `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<html>
-<head></head>
-<body style="font-family:monospace">
-<pre>{{ .Content }}</pre>
-</body>
-</html>
-`
-
+// HTMLSMTPKeystoreReportBody is the constant that provides an HTML template for KeystoreSentinel SMTP reports
 const HTMLSMTPKeystoreReportBody = `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html><head></head><body><div width="100%" style="margin:0!important;padding:10px 0!important;background-color:#ffffff">
 <center style="width:100%;background-color:#ffffff">
@@ -137,9 +132,13 @@ const HTMLSMTPKeystoreReportBody = `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0
 </html>
 `
 
+// HTMLSMTPKeystoreReportBodyDivider is the constant template for a full-width HTML divider, the <hr /> element is all really
 const HTMLSMTPKeystoreReportBodyDivider = `<div style="width:100%;"><hr /></div>`
+
+// HTMLSMTPKeystoreReportBodyTableDivider is the constant template for an empty single-cell table row divider for a rich HTML KeystoreSentinel report
 const HTMLSMTPKeystoreReportBodyTableDivider = `<tr><td style="text-align:left">&nbsp;</td></tr>`
 
+// HTMLSMTPKeystoreReportLine is the constant template for a styled table row representing a certificate at risk for a rich HTML KeystoreSentinel report
 const HTMLSMTPKeystoreReportLine = `<tr style="{{ .RowStyles }}">
 <td style="{{ .CellStyles }}">{{ .APIVersion }}</td>
 <td style="{{ .CellStyles }}">{{ .Kind }}</td>
@@ -154,6 +153,7 @@ const HTMLSMTPKeystoreReportLine = `<tr style="{{ .RowStyles }}">
 <td style="{{ .CellStyles }}">{{ .TriggeredDaysOut }}</td>
 </tr>`
 
+// HTMLSMTPKeystoreReportHeader is the constant template for a styled table header (and tfoot, technically...) for a rich HTML KeystoreSentinel report
 const HTMLSMTPKeystoreReportHeader = `<tr style="background:#EEE;">
 <td style="{{ .CellStyles }}border-bottom:1px solid #999;border-top:1px solid #999;">{{ .APIVersion }}</td>
 <td style="{{ .CellStyles }}border-bottom:1px solid #999;border-top:1px solid #999;">{{ .Kind }}</td>
@@ -168,7 +168,7 @@ const HTMLSMTPKeystoreReportHeader = `<tr style="background:#EEE;">
 <td style="{{ .CellStyles }}border-bottom:1px solid #999;border-top:1px solid #999;">{{ .TriggeredDaysOut }}</td>
 </tr>`
 
-// HTMLReportStructure provides the overall structure to the HTMLSMTPReport template
+// HTMLKeystoreReportStructure provides the overall data structure to the HTMLSMTPKeystoreReport template
 type HTMLKeystoreReportStructure struct {
 	Namespace          string
 	Name               string
@@ -184,7 +184,7 @@ type HTMLKeystoreReportStructure struct {
 	BodyDivider        string
 }
 
-// HTMLReportLineStructure provides the struct for the htmlReportLine template
+// HTMLKeystoreReportLineStructure provides the data structure for the HTMLKeystoreReportLine template
 type HTMLKeystoreReportLineStructure struct {
 	APIVersion                     string
 	Kind                           string
@@ -201,7 +201,7 @@ type HTMLKeystoreReportLineStructure struct {
 	CellStyles                     string
 }
 
-// HTMLReportHeaderStructure provides the struct for the htmlReportHeader template
+// HTMLKeystoreReportHeaderStructure provides the data structure for the HTMLKeystoreReportHeader template
 type HTMLKeystoreReportHeaderStructure struct {
 	APIVersion                     string
 	Kind                           string

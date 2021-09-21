@@ -25,7 +25,7 @@ var (
 	SMTPMessageSubject = "Certificate Sentinel Operator - Report"
 )
 
-// SetDefaultInt64 will return either the default int64 or an overriden value
+// SetDefaultInt64 will return either the default int64 or an overridden value
 func SetDefaultInt64(defaultVal int64, overrideVal int64) int64 {
 	if overrideVal == 0 {
 		return defaultVal
@@ -33,7 +33,7 @@ func SetDefaultInt64(defaultVal int64, overrideVal int64) int64 {
 	return overrideVal
 }
 
-// SetDefaultInt32 will return either the default int32 or an overriden value
+// SetDefaultInt32 will return either the default int32 or an overridden value
 func SetDefaultInt32(defaultVal int32, overrideVal int32) int32 {
 	iString := strings.TrimSpace(I32ToString(overrideVal))
 	if overrideVal == 0 {
@@ -45,7 +45,7 @@ func SetDefaultInt32(defaultVal int32, overrideVal int32) int32 {
 	return defaultVal
 }
 
-// SetDefaultInt will return either the default int or an overriden value
+// SetDefaultInt will return either the default int or an overridden value
 func SetDefaultInt(defaultVal int, overrideVal int) int {
 	if overrideVal == 0 {
 		return defaultVal
@@ -56,7 +56,7 @@ func SetDefaultInt(defaultVal int, overrideVal int) int {
 	return defaultVal
 }
 
-// SetDefaultString will return either the default string or an overriden value
+// SetDefaultString will return either the default string or an overridden value
 func SetDefaultString(defaultVal string, overrideVal string) string {
 	if len(strings.TrimSpace(overrideVal)) > 0 {
 		return overrideVal
@@ -64,7 +64,7 @@ func SetDefaultString(defaultVal string, overrideVal string) string {
 	return defaultVal
 }
 
-// SetDefaultBool will return either the default bool or an overriden value
+// SetDefaultBool will return either the default bool or an overridden value
 func SetDefaultBool(defaultVal *bool, overrideVal *bool) *bool {
 	if overrideVal != nil {
 		return overrideVal

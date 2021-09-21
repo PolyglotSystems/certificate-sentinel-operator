@@ -45,6 +45,7 @@ import (
 //===========================================================================================
 // SPOT TYPES
 //===========================================================================================
+
 // CertificateSentinelReconciler reconciles a CertificateSentinel object
 type CertificateSentinelReconciler struct {
 	// client can be used to retrieve objects from the APIServer with the cached response.
@@ -55,6 +56,7 @@ type CertificateSentinelReconciler struct {
 //===========================================================================================
 // INIT VARS
 //===========================================================================================
+
 // Implement reconcile.Reconciler so the controller can reconcile objects
 var _ reconcile.Reconciler = &CertificateSentinelReconciler{}
 var lggr = log.Log.WithName("certificate-sentinel-controller")
@@ -63,6 +65,7 @@ var SetLogLevel int
 //===========================================================================================
 // INIT FUNC
 //===========================================================================================
+
 // init is fired when this controller is started
 func init() {
 	// Set logging
@@ -72,6 +75,7 @@ func init() {
 //===========================================================================================
 // RBAC GENERATORS
 //===========================================================================================
+
 //+kubebuilder:rbac:groups=config.polyglot.systems,resources=certificatesentinels,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=config.polyglot.systems,resources=certificatesentinels/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=config.polyglot.systems,resources=certificatesentinels/finalizers,verbs=update
@@ -82,6 +86,7 @@ func init() {
 //===========================================================================================
 // RECONCILE
 //===========================================================================================
+
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
 // TODO(user): Modify the Reconcile function to compare the state specified by
@@ -137,7 +142,6 @@ func (r *CertificateSentinelReconciler) Reconcile(ctx context.Context, req ctrl.
 
 	targetLabelSelector, targetNamespaceLabelSelector := SetupLabelSelectors(targetLabels, targetNamespaceLabels, LggrK)
 
-	//effectiveNamespaces := []string{}
 	CertHashList := []string{}
 	expiredCertificateCount := 0
 
@@ -186,39 +190,6 @@ func (r *CertificateSentinelReconciler) Reconcile(ctx context.Context, req ctrl.
 		time.Sleep(time.Second * time.Duration(scanningInterval))
 		return ctrl.Result{}, err
 	}
-
-	/*
-		// Loop through target namespaces
-		for _, elem := range certificateSentinel.Spec.Target.Namespaces {
-			namespaceList := &corev1.NamespaceList{}
-			ns := strings.TrimSpace(elem)
-			activeNamespace := ns
-			activeNamespaceDisplayName := ns
-
-			if ns == "*" {
-				activeNamespace = ""
-				activeNamespaceDisplayName = "*"
-			}
-
-			LogWithLevel("Querying for namespace/"+activeNamespaceDisplayName+" with sa/"+serviceAccount, 3, lggr)
-			// Get Namespace with the cached context
-			namespaceListOptions := &client.ListOptions{Namespace: activeNamespace, LabelSelector: targetNamespaceLabelSelector}
-			err = cl.List(context.Background(), namespaceList, namespaceListOptions)
-			if err != nil {
-				lggr.Error(err, "Failed to list namespace in cluster!")
-				lggr.Info("Running reconciler again in " + strconv.Itoa(scanningInterval) + "s")
-				time.Sleep(time.Second * time.Duration(scanningInterval))
-				return ctrl.Result{}, err
-			}
-			// Loop through NamespaceList, create the effectiveNamespaces slice
-			for _, el := range namespaceList.Items {
-				if !defaults.ContainsString(effectiveNamespaces, el.Name) {
-					LogWithLevel("Adding ns/"+el.Name+" to scope", 3, lggr)
-					effectiveNamespaces = append(effectiveNamespaces, el.Name)
-				}
-			}
-		}
-	*/
 
 	effectiveNamespaces, _ := SetupNamespaceSlice(certificateSentinel.Spec.Target.Namespaces, cl, lggr, serviceAccount, targetNamespaceLabelSelector, scanningInterval)
 
@@ -384,13 +355,6 @@ func (r *CertificateSentinelReconciler) Reconcile(ctx context.Context, req ctrl.
 		}
 	}
 	LogWithLevel("Found "+strconv.Itoa(len(certificateSentinel.Status.DiscoveredCertificates))+" Certificates, "+strconv.Itoa(expiredCertificateCount)+" of which are at risk of expiring", 2, lggr)
-
-	// Reconcile successful - don't requeue
-	// return ctrl.Result{}, nil
-	// Reconcile failed due to error - requeue
-	// return ctrl.Result{}, err
-	// Requeue for any reason other than an error
-	// return ctrl.Result{Requeue: true}, nil
 
 	// Reconcile for any reason other than an error after 5 seconds
 	lggr.Info("Running reconciler again in " + strconv.Itoa(scanningInterval) + "s")
