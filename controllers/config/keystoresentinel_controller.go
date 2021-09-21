@@ -17,9 +17,7 @@ limitations under the License.
 package config
 
 import (
-	"bytes"
 	"context"
-	"crypto/x509"
 	"reflect"
 
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -40,7 +38,6 @@ import (
 	configv1 "github.com/kenmoini/certificate-sentinel-operator/apis/config/v1"
 	defaults "github.com/kenmoini/certificate-sentinel-operator/controllers/defaults"
 	helpers "github.com/kenmoini/certificate-sentinel-operator/controllers/helpers"
-	keystore "github.com/pavel-v-chernykh/keystore-go/v4"
 )
 
 //===========================================================================================
@@ -128,6 +125,12 @@ func (r *KeystoreSentinelReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	setLogLevelK = defaults.SetDefaultInt(defaults.LogLevel, keystoreSentinel.Spec.LogLevel)
 
 	// Set default vars
+	var CertHashList []string
+	keystoreCount := 0
+	keystoreAtRisk := false
+	var expiredKeystoreCount int
+	var expiredKeystoreCertificatesCount int
+
 	scanningInterval := defaults.SetDefaultInt(defaults.ScanningInterval, keystoreSentinel.Spec.ScanningInterval)
 	targetName := keystoreSentinel.Spec.Target.TargetName
 
@@ -140,13 +143,6 @@ func (r *KeystoreSentinelReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	targetNamespaceLabels := keystoreSentinel.Spec.Target.NamespaceLabels
 	targetLabels := keystoreSentinel.Spec.Target.TargetLabels
 	targetLabelSelector, targetNamespaceLabelSelector := SetupLabelSelectors(targetLabels, targetNamespaceLabels, lggrK)
-
-	var CertHashList []string
-	//var decodedCertificates []x509.Certificate
-	keystoreCount := 0
-	keystoreAtRisk := false
-	var expiredKeystoreCount int
-	var expiredKeystoreCertificatesCount int
 
 	LogWithLevel("Processing KeystoreSentinel target: "+targetName, 2, lggrK, setLogLevelK)
 
@@ -382,84 +378,4 @@ func (r *KeystoreSentinelReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&configv1.KeystoreSentinel{}).
 		Complete(r)
-}
-
-// ReadKeyStoreFromBytes takes in a byte slice and password and decodes the
-func ReadKeyStoreFromBytes(byteData []byte, password []byte) (keystore.KeyStore, error) {
-	f := bytes.NewReader(byteData)
-
-	keyStore := keystore.New(keystore.WithCaseExactAliases(), keystore.WithOrderedAliases())
-	if err := keyStore.Load(f, password); err != nil {
-		return keyStore, err
-	}
-
-	return keyStore, nil
-}
-
-// ProcessKeystoreIntoCertificates takes a JKS object and turns it into a list of decoded certificates
-func ProcessKeystoreIntoCertificates(keystoreObj keystore.KeyStore) (map[string][]x509.Certificate, error) {
-	certificateMap := make(map[string][]x509.Certificate)
-
-	for _, iV := range keystoreObj.Aliases() {
-		// Check if the entry is a Certificate
-		if keystoreObj.IsTrustedCertificateEntry(iV) {
-			// Pull Certificate bytes from the keystore
-			cert, err := keystoreObj.GetTrustedCertificateEntry(iV)
-			if err != nil {
-				return certificateMap, err
-			}
-			// Make sure this is an X.509 type certificate
-			if cert.Certificate.Type == "X.509" {
-				// Decode certificate bytes into proper x509.Certificate object
-				certsDecode, err := x509.ParseCertificate(cert.Certificate.Content)
-				if err != nil {
-					return certificateMap, err
-				}
-				// Add to certificate list
-				certificateMap[iV] = append(certificateMap[iV], *certsDecode)
-			}
-		}
-	}
-	return certificateMap, nil
-}
-
-func getPasswordBytesFromSpecTarget(keystorePasswordDef configv1.KeystorePassword, namespace string, clnt client.Client) ([]byte, error) {
-	passwordBytes := []byte("changeit")
-	defer zeroing(passwordBytes)
-
-	switch keystorePasswordDef.Type {
-	case "secret":
-		scrt, err := GetSecret(keystorePasswordDef.Secret.Name, namespace, clnt)
-		if err != nil {
-			return []byte{}, err
-		}
-		passwordBytes = scrt.Data[keystorePasswordDef.Secret.Key]
-	case "labels":
-		labelSelector, err := SetupSingleLabelSelector(keystorePasswordDef.Labels.LabelSelectors)
-		if err != nil {
-			return []byte{}, err
-		}
-
-		// Build List Options
-		targetListOptions := &client.ListOptions{Namespace: namespace, LabelSelector: labelSelector}
-
-		// Get secrets matching the label
-		secretList := &corev1.SecretList{}
-		err = clnt.List(context.Background(), secretList, targetListOptions)
-		if err != nil {
-			return []byte{}, err
-		}
-
-		// Loop through the list of secrets, find the matching key
-		for _, sV := range secretList.Items {
-			if sV.Data[keystorePasswordDef.Labels.Key] != nil {
-				passwordBytes = sV.Data[keystorePasswordDef.Labels.Key]
-			}
-		}
-
-	case "plaintext":
-		passwordBytes = []byte(keystorePasswordDef.Plaintext)
-	}
-
-	return passwordBytes, nil
 }
