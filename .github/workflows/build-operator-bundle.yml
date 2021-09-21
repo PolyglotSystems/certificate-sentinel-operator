@@ -20,7 +20,6 @@ on:
   # schedule:
   #   - cron: '0 13 * * *'
 jobs:
-  # ensure the code builds...
   build:
     name: Build
     runs-on: ubuntu-latest
