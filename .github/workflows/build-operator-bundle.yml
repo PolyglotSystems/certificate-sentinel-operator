@@ -1,7 +1,7 @@
 # This GitHub action runs your tests for each commit push and/or PR. Optionally
 # you can turn it on using a cron schedule for regular testing.
 #
-name: Tests
+name: Build Operator Bundle
 on:
   pull_request:
     paths-ignore:
@@ -33,6 +33,19 @@ jobs:
         go-version: '1.16'
       id: go
 
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v1
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v1
+
+    - name: Login to Quay
+      uses: docker/login-action@v1 
+      with:
+        registry: quay.io
+        username: ${{ secrets.REGISTRY_USERNAME }}
+        password: ${{ secrets.REGISTRY_TOKEN }}
+
     - name: Check out code into the Go module directory
       uses: actions/checkout@v2.3.4
 
@@ -44,10 +57,13 @@ jobs:
       run: |
         make generate && make manifests
 
-    - name: Run go fmt against code
+    - name: Build Container Image
       run: |
-        go fmt ./...
+        make docker-build
 
-    - name: Run go vet against code
-      run: |
-        go vet ./...
+#    - name: Build and push
+#      id: docker_build
+#      uses: docker/build-push-action@v2
+#      with:
+#        push: true
+#        tags: user/app:latest
