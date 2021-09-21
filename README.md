@@ -15,8 +15,10 @@ This Operator provides two Custom Resource Definitions (CRDs):
 
 - [Quickstart](https://github.com/PolyglotSystems/certificate-sentinel-operator/tree/main/docs/quickstart.md)
 - [SMTP Configuration](https://github.com/PolyglotSystems/certificate-sentinel-operator/tree/main/docs/smtp-configuration.md)
-- [Examples - SSL Certificates](https://github.com/PolyglotSystems/certificate-sentinel-operator/tree/main/examples/ssl_certificates/)
+- [Examples - SSL Certificates for CertificateSentinel](https://github.com/PolyglotSystems/certificate-sentinel-operator/tree/main/examples/ssl_certificates/)
+- [Examples - Keystore for KeystoreSentinel](https://github.com/PolyglotSystems/certificate-sentinel-operator/tree/main/examples/java_keystore/)
 - [Full YAML Structure - CertificateSentinel](https://github.com/PolyglotSystems/certificate-sentinel-operator/tree/main/docs/full_yaml_spec-CertificateSentinel.md)
+- [Full YAML Structure - KeystoreSentinel](https://github.com/PolyglotSystems/certificate-sentinel-operator/tree/main/docs/full_yaml_spec-KeystoreSentinel.md)
 
 ## Deploying the Operator
 

@@ -71,11 +71,11 @@ func SendSMTPMail(authType string, username string, password string, identity st
 	server.TLSConfig = &tls.Config{InsecureSkipVerify: true}
 
 	// Set STARTTLS config
-	if *useSTARTTLS == true {
+	if *useSTARTTLS {
 		server.Encryption = mail.EncryptionSTARTTLS
 	}
 	// Set TLSConfig to provide custom TLS configuration. For example, to skip TLS verification (useful for testing):
-	if *useSSL == true {
+	if *useSSL {
 		server.Encryption = mail.EncryptionSSLTLS
 		server.TLSConfig = &tls.Config{InsecureSkipVerify: false}
 	}

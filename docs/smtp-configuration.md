@@ -1,6 +1,6 @@
 # SMTP Configuration
 
-In order to have a CertificateSentinel communicate with an SMTP server, it must be provided some log in parameters - these are stored as a Secret and the name of that Secret is passed to the `.spec.alerts[*].config.smtp_auth_secret` definition.
+In order to have a CertificateSentinel/KeystoreSentinel communicate with an SMTP server, it must be provided some log in parameters - these are stored as a Secret and the name of that Secret is passed to the `.spec.alerts[*].config.smtp_auth_secret` definition.
 
 ```bash
 ## Plain SMTP Authentication Type

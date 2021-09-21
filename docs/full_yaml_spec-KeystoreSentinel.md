@@ -1,18 +1,18 @@
-# Full CertificateSentinel YAML Spec Example
+# Full KeystoreSentinel YAML Spec Example
 
 ```yaml
 apiVersion: config.polyglot.systems/v1
-kind: CertificateSentinel
+kind: KeystoreSentinel
 metadata:
-  name: certificatesentinel-sample
+  name: keystoresentinel-sample
   namespace: cert-sentinel
 spec:
   logLevel: 2 # [optional] logLevel is the verbosity of the logger, 1-4 with 4 being the most verbose, defaults to 2
   scanningInterval: 60 # [optional] scanningInterval is the number of seconds the Operator will scan the cluster - default is 60
   alert: # alerts is a list of alerting endpoints associated with these below targets
     # Log report to Stdout once a day, useful for Elastic/Splunk/etc environments
-    name: secrets-logger # must be a unique dns/k8s compliant name
-    type: logger # type can be: `logger` or `smtp`
+    name: secrets-mailer # must be a unique dns/k8s compliant name
+    type: mailer # type can be: `logger` or `smtp`
     config: # optional on `logger` types, required for `smtp`
       reportInterval: daily # [optional] reportInterval can be `daily`, `weekly`, `monthly`, or `debug`, defaults to `daily`
       smtp_destination_addresses: # where is the emailed report being sent to, a list of emails
@@ -25,8 +25,8 @@ spec:
       smtp_auth_type: plain # SMTP authentication type, can be `plain`, `login`, or `cram-md5`
       smtp_use_ssl: false # [optional] Enable or disable SMTP TLS - defaults to `true`
       smtp_use_starttls: false # [optional] Enable or disable SMTP TLS - defaults to `true`
-  target: # target is a Kubernetes object being targeted and scanned for x509 Certificate data
-    # Target Secrets/v1, looking for certificates with expirations coming in 30, 60, 90, 9000, and 9001 days across all namespaces with a specific serviceaccount
+  target: # target is a Kubernetes object being targeted and scanned for Java Keystore data
+    # Target Secrets/v1, looking for Keystores with certificates that have expirations coming in 30, 60, 90, 9000, and 9001 days across all namespaces with a specific serviceaccount
     apiVersion: v1 # Corresponds to the apiVersion of the object being targeted - likely just v1 for Secrets & ConfigMaps
     daysOut: # [optional] Expiration thresholds for 30, 60, 90, 9000, and 9001 days out - 9000/9001 are for testing.  Defaults to 30, 60, and 90
       - 30
@@ -36,7 +36,7 @@ spec:
       - 9000
     kind: Secret # Corresponds to the kind of the object being targeted - Secret or ConfigMap
     name: all-secrets # must be a unique dns/k8s compliant name
-    namespaces: # list of namespaces to watch for certificates in Secrets - can be a single wildcard or a list of specific namespaces
+    namespaces: # list of namespaces to watch for Keystores in Secrets - can be a single wildcard or a list of specific namespaces
       - '*'
     serviceAccount: some-service-account # the ServiceAccount in tis namespace to use against the K8s/OCP API
     # [optional] targetLabels let you filter to targets such as Secrets and ConfigMaps that match a label filter
@@ -49,19 +49,53 @@ spec:
       - key: polyglot.systems/certificate-sentinel-namespace
         value:
           - 'true'
-status: # .status is not user-defined, it will be updated at the end of a full scan/operator reconciliation and will list any certificates found, the ones expiring within our designated daysOut thresholds, and when the last reports were sent for each alert
-  discoveredCertificates:
+    # keystorePassword is where the Keystore password should be sourced from - if the keystorePassword is inaccessible then the namespace will not be scanned for Keystore objects
+    keystorePassword:
+      plaintext: changeit
+      type: plaintext
+
+      #type: labels
+      #labelRef:
+      #  key: keystore-pass
+      #  labelSelectors:
+      #    - key: polyglot.systems/asset
+      #      value:
+      #      - keystore-password
+      
+      #type: secret
+      #secretRef:
+      #  key: keystore-pass
+      #  name: keystore-secret-password
+status: # .status is not user-defined, it will be updated at the end of a full scan/operator reconciliation and will list any Keystore Certificates found, the ones expiring within our designated daysOut thresholds, and when the last reports were sent for each alert
+  discoveredKeystoreCertificates:
     - triggeredDaysOut:
         - 9001
         - 9000
-      certificateAuthorityCommonName: openshift-service-serving-signer@1630120637
-      commonName: openshift-service-serving
-      name: kube-scheduler-operator-serving-cert
-      expiration: '2023-08-28 03:17:39 +0000 UTC'
+      certificateAuthorityCommonName: Example Labs Intermediate Certificate Authority
+      name: keystore-secret-test
+      keystoreAlias: examplelabsica
+      expiration: '2024-09-06 00:00:00 +0000 UTC'
       kind: Secret
-      dataKey: tls.crt
-      isCertificateAuthority: false
-      namespace: openshift-kube-scheduler-operator
+      dataKey: jks
+      commonName: Example Labs Signing Certificate Authority
+      isCertificateAuthority: true
+      namespace: cert-sentinel
       apiVersion: v1
-  lastReportSent: 1632013465
+    - triggeredDaysOut:
+        - 9001
+        - 9000
+      certificateAuthorityCommonName: Certificate Authority
+      name: keystore-secret-test
+      keystoreAlias: idmca
+      expiration: '2041-04-05 16:25:15 +0000 UTC'
+      kind: Secret
+      dataKey: jks
+      commonName: Certificate Authority
+      isCertificateAuthority: true
+      namespace: cert-sentinel
+      apiVersion: v1
+  expiringCertificates: 2
+  keystoresAtRisk: 1
+  lastReportSent: 1632232508
+  totalKeystoresFound: 1
 ```

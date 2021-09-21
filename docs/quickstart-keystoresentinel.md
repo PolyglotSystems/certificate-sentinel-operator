@@ -1,4 +1,4 @@
-# Quickstart
+# Quickstart - KeystoreSentinel
 
 This document will help demonstrate the workflow for using this operator to scan a cluster for expiring x509 certificates.
 
@@ -254,28 +254,30 @@ roleRef:
   apiGroup: rbac.authorization.k8s.io
 ```
 
-## 5. Create a CertificateSentinel
+## 5. Create a KeystoreSentinel
 
-Now that you have a Namespace and a ServiceAccount that has access to other Namespaces and the ability to read their Secrets/ConfigMaps, you can create the an object with the type of a Custom Resource Definition (CRD) supplied by this Operator, CertificateSentinel.
+Now that you have a Namespace and a ServiceAccount that has access to other Namespaces and the ability to read their Secrets/ConfigMaps, you can create the an object with the type of a Custom Resource Definition (CRD) supplied by this Operator, KeystoreSentinel.
 
-CertificateSentinel will watch allowed (authorization by {Cluster}RoleBindings to the .targets[*].ServiceAccount, Kubernetes/OpenShift RBAC) Namespaces+Secrets/ConfigMaps.
+KeystoreSentinel will watch allowed (authorization by {Cluster}RoleBindings to the .targets[*].ServiceAccount, Kubernetes/OpenShift RBAC) Namespaces+Secrets/ConfigMaps.
 
-It will then scan them for PEM base64 encoded x509 Certificates, such as ones used for client/server/user authentication and service security via SSL/TLS.
+It will then scan them for Java Keystores and if parsed, will scan for x509 Certificates, such as ones used for providing trusted root stores to Java applications.
 
-If the Secrets/ConfigMaps contain a valid x509 Certificate, it will check the expiration date of those certificates and check if they are to be soon expiring and if so fires off an Alert.  Current Alert Types are `logger` (just stdout via operator-controller log function, eg you just ship logs to Elastic/Splunk/etc and query/match/alert there) and `smtp` for email notifications.
+If the Secrets/ConfigMaps contain a valid Java Keystore that has valid certificates, it will check the expiration date of those certificates and check if they are to be soon expiring and if so fires off an Alert.  Current Alert Types are `logger` (just stdout via operator-controller log function, eg you just ship logs to Elastic/Splunk/etc and query/match/alert there) and `smtp` for email notifications.
 
-The following CertificateSentinel will watch the whole cluster for Certificates in Secrets, accessing those it can and Alerting via logger to upcoming expirations:
+The following KeystoreSentinel will watch the whole cluster for Certificates in Secrets, accessing those it can and Alerting via logger to upcoming expirations:
 
 ```yaml
 apiVersion: config.polyglot.systems/v1
-kind: CertificateSentinel
+kind: KeystoreSentinel
 metadata:
-  name: certificatesentinel-sample
-  namespace: cert-operator
+  name: keystoresentinel-sample
+  namespace: cert-sentinel
 spec:
   alert:
     name: secrets-logger
     type: logger
+    config:
+      reportInterval: debug
   target:
     apiVersion: v1
     daysOut:
@@ -289,26 +291,31 @@ spec:
     namespaces:
       - '*'
     serviceAccount: some-service-account
+    keystorePassword:
+      plaintext: changeit
+      type: plaintext
 ```
 
-Once the Operator has found a series of Certificates, it will log the discovered and expired certificates and reflect the data in the `CertificateSentinel.status` as such:
+Once the Operator has found a series of Certificates, it will log the discovered and expired certificates and reflect the data in the `KeystoreSentinel.status` as such:
 
 ```yaml
 apiVersion: config.polyglot.systems/v1
-kind: CertificateSentinel
+kind: KeystoreSentinel
 metadata:
   creationTimestamp: '2021-08-31T02:53:12Z'
   generation: 4
   managedFields:
     ...
-  name: certificatesentinel-sample
-  namespace: cert-operator
+  name: keystoresentinel-sample
+  namespace: cert-sentinel
   resourceVersion: '10437267'
   uid: 17db6400-2d6e-4c87-8b95-0a645ce211b9
 spec:
   alert:
     name: secrets-logger
     type: logger
+    config:
+      reportInterval: debug
   target:
     apiVersion: v1
     daysOut:
@@ -322,18 +329,42 @@ spec:
     namespaces:
       - '*'
     serviceAccount: some-service-account
+    keystorePassword:
+      plaintext: changeit
+      type: plaintext
 status:
-  discoveredCertificates:
+  discoveredKeystoreCertificates:
     - triggeredDaysOut:
         - 9001
         - 9000
-      certificateAuthorityCommonName: openshift-service-serving-signer@1630120637
-      name: kube-scheduler-operator-serving-cert
-      expiration: '2023-08-28 03:17:39 +0000 UTC'
+      certificateAuthorityCommonName: Example Labs Intermediate Certificate Authority
+      name: keystore-secret-test
+      keystoreAlias: examplelabsica
+      expiration: '2024-09-06 00:00:00 +0000 UTC'
       kind: Secret
-      dataKey: tls.crt
-      isCertificateAuthority: false
-      namespace: openshift-kube-scheduler-operator
+      dataKey: jks
+      commonName: Example Labs Signing Certificate Authority
+      isCertificateAuthority: true
+      namespace: cert-sentinel
       apiVersion: v1
-  lastReportSent: 1632023822
+    - triggeredDaysOut:
+        - 9001
+        - 9000
+      certificateAuthorityCommonName: Certificate Authority
+      name: keystore-secret-test
+      keystoreAlias: idmca
+      expiration: '2041-04-05 16:25:15 +0000 UTC'
+      kind: Secret
+      dataKey: jks
+      commonName: Certificate Authority
+      isCertificateAuthority: true
+      namespace: cert-sentinel
+      apiVersion: v1
+  expiringCertificates: 2
+  keystoresAtRisk: 1
+  lastReportSent: 1632232508
+  totalKeystoresFound: 1
 ```
+
+- For further information on the KeystoreSentinel YAML spec, see [full_yaml_spec-KeystoreSentinel.md](./full_yaml_spec-KeystoreSentinel.md)
+- For additional examples of KeystoreSentinels and Keystore + Password sets represented in Secrets/ConfigMaps to test/use, see [examples/](../examples/)
