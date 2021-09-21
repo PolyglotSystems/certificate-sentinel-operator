@@ -67,7 +67,7 @@ func processReport(certificateSentinel configv1.CertificateSentinel, lggr logr.L
 
 	// Next expected time to send is before the current time, overdue to send
 	if (addedTime < time.Now().Unix()) || (lastReportSentTime == currentUnixTime) {
-		LogWithLevel("Dispatching report for "+certificateSentinel.Spec.Alert.AlertName, 2, lggr)
+		LogWithLevel("Dispatching report for "+certificateSentinel.Spec.Alert.AlertName, 2, lggr, setLogLevel)
 
 		// Send out alert based on alert type
 		switch certificateSentinel.Spec.Alert.AlertType {
@@ -107,7 +107,7 @@ func createSMTPReport(certificateSentinel configv1.CertificateSentinel, lggr log
 		var cramSecret string
 
 		// Set defaults
-		useTLS := defaults.SetDefaultBool(&defaults.SMTPAuthUseSSL, alert.AlertConfiguration.SMTPAuthUseSSL)
+		useSSL := defaults.SetDefaultBool(&defaults.SMTPAuthUseSSL, alert.AlertConfiguration.SMTPAuthUseSSL)
 		useSTARTTLS := defaults.SetDefaultBool(&defaults.SMTPAuthUseSTARTTLS, alert.AlertConfiguration.SMTPAuthUseSTARTTLS)
 
 		// Get SMTP Authentication Secret if the AuthType is not `none`
@@ -130,7 +130,7 @@ func createSMTPReport(certificateSentinel configv1.CertificateSentinel, lggr log
 			password,
 			identity,
 			cramSecret,
-			useTLS,
+			useSSL,
 			useSTARTTLS,
 			alert.AlertConfiguration.SMTPDestinationEmailAddresses,
 			alert.AlertConfiguration.SMTPSenderEmailAddress,

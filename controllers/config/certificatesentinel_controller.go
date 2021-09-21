@@ -26,7 +26,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/rest"
 
 	//"k8s.io/api"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -60,7 +59,7 @@ type CertificateSentinelReconciler struct {
 // Implement reconcile.Reconciler so the controller can reconcile objects
 var _ reconcile.Reconciler = &CertificateSentinelReconciler{}
 var lggr = log.Log.WithName("certificate-sentinel-controller")
-var SetLogLevel int
+var setLogLevel int
 
 //===========================================================================================
 // INIT FUNC
@@ -104,8 +103,8 @@ func (r *CertificateSentinelReconciler) Reconcile(ctx context.Context, req ctrl.
 		DiscoveredCertificates: []configv1.CertificateInformation{},
 	}
 
-	LogWithLevel("Connecting to:"+clusterEndpoint, 3, lggr)
-	LogWithLevel("API Path:"+apiPath, 3, lggr)
+	LogWithLevel("Connecting to:"+clusterEndpoint, 3, lggr, setLogLevel)
+	LogWithLevel("API Path:"+apiPath, 3, lggr, setLogLevel)
 
 	// Fetch the CertificateSentinel instance
 	certificateSentinel := &configv1.CertificateSentinel{}
@@ -124,8 +123,8 @@ func (r *CertificateSentinelReconciler) Reconcile(ctx context.Context, req ctrl.
 	}
 
 	// Log the used certificateSentinel
-	LogWithLevel("CertificateSentinel loaded!  Found '"+certificateSentinel.Name+"' in 'namespace/"+certificateSentinel.Namespace+"'", 1, lggr)
-	SetLogLevel = defaults.SetDefaultInt(defaults.LogLevel, certificateSentinel.Spec.LogLevel)
+	LogWithLevel("CertificateSentinel loaded!  Found '"+certificateSentinel.Name+"' in 'namespace/"+certificateSentinel.Namespace+"'", 1, lggr, setLogLevel)
+	setLogLevel = defaults.SetDefaultInt(defaults.LogLevel, certificateSentinel.Spec.LogLevel)
 
 	// Set default vars
 	scanningInterval := defaults.SetDefaultInt(defaults.ScanningInterval, certificateSentinel.Spec.ScanningInterval)
@@ -140,50 +139,15 @@ func (r *CertificateSentinelReconciler) Reconcile(ctx context.Context, req ctrl.
 	targetLabels := certificateSentinel.Spec.Target.TargetLabels
 	targetNamespaceLabels := certificateSentinel.Spec.Target.NamespaceLabels
 
-	targetLabelSelector, targetNamespaceLabelSelector := SetupLabelSelectors(targetLabels, targetNamespaceLabels, LggrK)
+	targetLabelSelector, targetNamespaceLabelSelector := SetupLabelSelectors(targetLabels, targetNamespaceLabels, lggr)
 
 	CertHashList := []string{}
 	expiredCertificateCount := 0
 
-	LogWithLevel("Processing CertificateSentinel target: "+targetName, 2, lggr)
-
-	// Get ServiceAccount
-	LogWithLevel("Using ServiceAccount: "+serviceAccount, 2, lggr)
-	targetServiceAccount, _ := GetServiceAccount(serviceAccount, certificateSentinel.Namespace, r.Client)
-	var serviceAccountSecretName string
-	targetServiceAccountSecret := &corev1.Secret{}
-
-	// Find the right secret
-	for _, em := range targetServiceAccount.Secrets {
-		secret, _ := GetSecret(em.Name, certificateSentinel.Namespace, r.Client)
-		if secret.Type == "kubernetes.io/service-account-token" {
-			// Get Secret
-			serviceAccountSecretName = em.Name
-			LogWithLevel("Using Secret: "+serviceAccountSecretName, 2, lggr)
-			targetServiceAccountSecret, _ = GetSecret(serviceAccountSecretName, certificateSentinel.Namespace, r.Client)
-		}
-	}
-
-	// We didn't find a Secret to work against the API and thus can't create a new client
-	if serviceAccountSecretName == "" {
-		lggr.Error(err, "Failed to find API Token type Secret in ServiceAccount!")
-		lggr.Info("Running reconciler again in " + strconv.Itoa(scanningInterval) + "s")
-		time.Sleep(time.Second * time.Duration(scanningInterval))
-		return ctrl.Result{}, err
-	}
-
-	// Set up new client config
-	newConfig := &rest.Config{
-		BearerToken: string(targetServiceAccountSecret.Data[corev1.ServiceAccountTokenKey]),
-		Host:        clusterEndpoint,
-		APIPath:     apiPath,
-		TLSClientConfig: rest.TLSClientConfig{
-			CAData: targetServiceAccountSecret.Data[corev1.ServiceAccountRootCAKey],
-		},
-	}
+	LogWithLevel("Processing CertificateSentinel target: "+targetName, 2, lggr, setLogLevel)
 
 	// Set up new Client
-	cl, err := client.New(newConfig, client.Options{})
+	cl, err := SetupNewClient(lggr, setLogLevel, r.Client, serviceAccount, certificateSentinel.Namespace, clusterEndpoint, apiPath)
 	if err != nil {
 		lggr.Error(err, "Failed to create client")
 		lggr.Info("Running reconciler again in " + strconv.Itoa(scanningInterval) + "s")
@@ -191,7 +155,8 @@ func (r *CertificateSentinelReconciler) Reconcile(ctx context.Context, req ctrl.
 		return ctrl.Result{}, err
 	}
 
-	effectiveNamespaces, _ := SetupNamespaceSlice(certificateSentinel.Spec.Target.Namespaces, cl, lggr, serviceAccount, targetNamespaceLabelSelector, scanningInterval)
+	// Figure out what namespaces we actually have to work with
+	effectiveNamespaces, _ := SetupNamespaceSlice(certificateSentinel.Spec.Target.Namespaces, cl, lggr, setLogLevel, serviceAccount, targetNamespaceLabelSelector, scanningInterval)
 
 	// Loop through the namespaces in scope for this target
 	for _, el := range effectiveNamespaces {
@@ -210,7 +175,7 @@ func (r *CertificateSentinelReconciler) Reconcile(ctx context.Context, req ctrl.
 			for _, e := range secretList.Items {
 				secretType := string(e.Type)
 				if secretType == string(corev1.SecretTypeOpaque) || secretType == string(corev1.SecretTypeTLS) {
-					LogWithLevel("Getting secret/"+e.Name+" in namespace/"+el+" (type="+secretType+")", 3, lggr)
+					LogWithLevel("Getting secret/"+e.Name+" in namespace/"+el+" (type="+secretType+")", 3, lggr, setLogLevel)
 
 					secretItem, _ := GetSecret(string(e.Name), el, cl)
 
@@ -221,26 +186,26 @@ func (r *CertificateSentinelReconciler) Reconcile(ctx context.Context, req ctrl.
 
 						// See if this contains text about a Certificate
 						if strings.Contains(sDataStr, "-----BEGIN CERTIFICATE-----") {
-							LogWithLevel("CERTIFICATE FOUND! - ns/"+el+" - secret/"+string(e.Name)+" - key:"+k, 3, lggr)
+							LogWithLevel("CERTIFICATE FOUND! - ns/"+el+" - secret/"+string(e.Name)+" - key:"+k, 3, lggr, setLogLevel)
 							certs, _ := helpers.DecodeCertificateBytes(s, lggr)
 
 							// Loop through the current collection of certificates
 							for _, cert := range certs {
 								// Check to see if this has already been added
-								sha_str := createUniqueCertificateChecksum(targetKind+"-"+el+"-"+e.Name+"-"+cert.Subject.CommonName+"-"+cert.Issuer.CommonName, cert)
+								shaStr := createUniqueCertificateChecksum(targetKind+"-"+el+"-"+e.Name+"-"+cert.Subject.CommonName+"-"+cert.Issuer.CommonName, cert)
 
-								if defaults.ContainsString(CertHashList, sha_str) {
+								if defaults.ContainsString(CertHashList, shaStr) {
 									// Skipping Certificate
-									LogWithLevel("Already found "+sha_str, 3, lggr)
+									LogWithLevel("Already found "+shaStr, 3, lggr, setLogLevel)
 								} else {
 									// Add + Process
-									LogWithLevel("Adding "+sha_str, 3, lggr)
-									CertHashList = append(CertHashList, sha_str)
+									LogWithLevel("Adding "+shaStr, 3, lggr, setLogLevel)
+									CertHashList = append(CertHashList, shaStr)
 
 									discovered, messages := helpers.ParseCertificateIntoObjects(cert, timeOut, el, e.Name, k, targetKind, targetAPIVersion)
 									// Loop through passed messages for log level 3
 									for _, m := range messages {
-										LogWithLevel(m, 3, lggr)
+										LogWithLevel(m, 3, lggr, setLogLevel)
 									}
 
 									// Add decoded certificate to DiscoveredCertificates
@@ -262,7 +227,7 @@ func (r *CertificateSentinelReconciler) Reconcile(ctx context.Context, req ctrl.
 			}
 		//=========================== CONFIGMAPS
 		case "ConfigMap":
-			LogWithLevel("Checking for access to ConfigMap in ns/"+el, 3, lggr)
+			LogWithLevel("Checking for access to ConfigMap in ns/"+el, 3, lggr, setLogLevel)
 			// Get the list of ConfigMaps in this namespace
 			configMapList := &corev1.ConfigMapList{}
 			err = cl.List(context.Background(), configMapList, targetListOptions)
@@ -272,33 +237,33 @@ func (r *CertificateSentinelReconciler) Reconcile(ctx context.Context, req ctrl.
 
 			// Loop through ConfigMaps
 			for _, e := range configMapList.Items {
-				LogWithLevel("Getting configmap/"+e.Name+" in namespace/"+el, 3, lggr)
+				LogWithLevel("Getting configmap/"+e.Name+" in namespace/"+el, 3, lggr, setLogLevel)
 				configMapItem, _ := GetConfigMap(string(e.Name), el, cl)
 
 				// Loop through the actual ConfigMap data
 				for k, cm := range configMapItem.Data {
 					// See if this contains text about a Certificate
 					if strings.Contains(string(cm), "-----BEGIN CERTIFICATE-----") {
-						LogWithLevel("CERTIFICATE FOUND! - ns/"+el+" - configmap/"+string(e.Name)+" - key:"+k, 3, lggr)
+						LogWithLevel("CERTIFICATE FOUND! - ns/"+el+" - configmap/"+string(e.Name)+" - key:"+k, 3, lggr, setLogLevel)
 						certs, _ := helpers.DecodeCertificateBytes([]byte(cm), lggr)
 
 						// Loop through the current collection of certificates
 						for _, cert := range certs {
 							// Check to see if this has already been added
-							sha_str := createUniqueCertificateChecksum(targetKind+"-"+el+"-"+e.Name+"-"+cert.Subject.CommonName+"-"+cert.Issuer.CommonName, cert)
+							shaStr := createUniqueCertificateChecksum(targetKind+"-"+el+"-"+e.Name+"-"+cert.Subject.CommonName+"-"+cert.Issuer.CommonName, cert)
 
-							if defaults.ContainsString(CertHashList, sha_str) {
+							if defaults.ContainsString(CertHashList, shaStr) {
 								// Skipping Certificate
-								LogWithLevel("Already found "+sha_str, 3, lggr)
+								LogWithLevel("Already found "+shaStr, 3, lggr, setLogLevel)
 							} else {
 								// Add + Process
-								LogWithLevel("Adding "+sha_str, 3, lggr)
-								CertHashList = append(CertHashList, sha_str)
+								LogWithLevel("Adding "+shaStr, 3, lggr, setLogLevel)
+								CertHashList = append(CertHashList, shaStr)
 
 								discovered, messages := helpers.ParseCertificateIntoObjects(cert, timeOut, el, e.Name, k, targetKind, targetAPIVersion)
 								// Loop through passed messages for log level 3
 								for _, m := range messages {
-									LogWithLevel(m, 3, lggr)
+									LogWithLevel(m, 3, lggr, setLogLevel)
 								}
 
 								// Add decoded certificate to DiscoveredCertificates
@@ -354,7 +319,7 @@ func (r *CertificateSentinelReconciler) Reconcile(ctx context.Context, req ctrl.
 			return ctrl.Result{}, err
 		}
 	}
-	LogWithLevel("Found "+strconv.Itoa(len(certificateSentinel.Status.DiscoveredCertificates))+" Certificates, "+strconv.Itoa(expiredCertificateCount)+" of which are at risk of expiring", 2, lggr)
+	LogWithLevel("Found "+strconv.Itoa(len(certificateSentinel.Status.DiscoveredCertificates))+" Certificates, "+strconv.Itoa(expiredCertificateCount)+" of which are at risk of expiring", 2, lggr, setLogLevel)
 
 	// Reconcile for any reason other than an error after 5 seconds
 	lggr.Info("Running reconciler again in " + strconv.Itoa(scanningInterval) + "s")

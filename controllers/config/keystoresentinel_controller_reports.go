@@ -47,7 +47,7 @@ func processKeystoreReport(keystoreSentinel configv1.KeystoreSentinel, lggr logr
 
 	// Next expected time to send is before the current time, overdue to send
 	if (addedTime < time.Now().Unix()) || (lastReportSentTime == currentUnixTime) {
-		LogWithLevel("Dispatching report for "+keystoreSentinel.Spec.Alert.AlertName, 2, lggr)
+		LogWithLevel("Dispatching report for "+keystoreSentinel.Spec.Alert.AlertName, 2, lggr, setLogLevelK)
 
 		// Send out alert based on alert type
 		switch keystoreSentinel.Spec.Alert.AlertType {
@@ -228,7 +228,7 @@ func createKeystoreSMTPReport(keystoreSentinel configv1.KeystoreSentinel, lggr l
 		var cramSecret string
 
 		// Set defaults
-		useTLS := defaults.SetDefaultBool(&defaults.SMTPAuthUseSSL, alert.AlertConfiguration.SMTPAuthUseSSL)
+		useSSL := defaults.SetDefaultBool(&defaults.SMTPAuthUseSSL, alert.AlertConfiguration.SMTPAuthUseSSL)
 		useSTARTTLS := defaults.SetDefaultBool(&defaults.SMTPAuthUseSTARTTLS, alert.AlertConfiguration.SMTPAuthUseSTARTTLS)
 
 		// Get SMTP Authentication Secret if the AuthType is not `none`
@@ -251,7 +251,7 @@ func createKeystoreSMTPReport(keystoreSentinel configv1.KeystoreSentinel, lggr l
 			password,
 			identity,
 			cramSecret,
-			useTLS,
+			useSSL,
 			useSTARTTLS,
 			alert.AlertConfiguration.SMTPDestinationEmailAddresses,
 			alert.AlertConfiguration.SMTPSenderEmailAddress,

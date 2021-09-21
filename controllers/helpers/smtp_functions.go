@@ -28,7 +28,7 @@ import (
 )
 
 // SendSMTPMail assembles everything needed to sent an email via go-simple-mail
-func SendSMTPMail(authType string, username string, password string, identity string, cramSecret string, useTLS *bool, useSTARTTLS *bool, to []string, from string, smtpServer string, subject string, textMessage string, htmlMessage string) {
+func SendSMTPMail(authType string, username string, password string, identity string, cramSecret string, useSSL *bool, useSTARTTLS *bool, to []string, from string, smtpServer string, subject string, textMessage string, htmlMessage string) {
 
 	// Create a new SMTP Client
 	server := mail.NewSMTPClient()
@@ -68,19 +68,22 @@ func SendSMTPMail(authType string, username string, password string, identity st
 	// Timeout for send the data and wait respond
 	server.SendTimeout = 10 * time.Second
 
+	server.TLSConfig = &tls.Config{InsecureSkipVerify: true}
+
 	// Set STARTTLS config
-	if *useSTARTTLS {
+	if *useSTARTTLS == true {
 		server.Encryption = mail.EncryptionSTARTTLS
 	}
 	// Set TLSConfig to provide custom TLS configuration. For example, to skip TLS verification (useful for testing):
-	if *useTLS {
+	if *useSSL == true {
+		server.Encryption = mail.EncryptionSSLTLS
 		server.TLSConfig = &tls.Config{InsecureSkipVerify: false}
 	}
 
 	// Create SMTP client
 	smtpClient, err := server.Connect()
 	if err != nil {
-		log.Printf("%v\n", err)
+		log.Printf("SMTP CLIENT CREATION ERROR! %v\n", err)
 	}
 
 	// Set up new email message
@@ -111,7 +114,7 @@ func SendSMTPMail(authType string, username string, password string, identity st
 	// Send message
 	// always check error before send (y tho?)
 	if email.Error != nil {
-		log.Printf("%v\n", email.Error)
+		log.Printf("ERROR SENDING SMTP MESSAGE! %v\n", email.Error)
 	}
 
 	// Call Send and pass the client

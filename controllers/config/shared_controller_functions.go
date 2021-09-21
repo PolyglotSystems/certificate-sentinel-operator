@@ -21,6 +21,7 @@ import (
 	"crypto/sha1"
 	"crypto/x509"
 	"encoding/hex"
+	"errors"
 	"strconv"
 	"strings"
 	"time"
@@ -32,12 +33,13 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
+	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // LogWithLevel implements simple log levels
-func LogWithLevel(s string, level int, l logr.Logger) {
-	if SetLogLevel >= level {
+func LogWithLevel(s string, level int, l logr.Logger, setLogLevel int) {
+	if setLogLevel >= level {
 		l.Info(s)
 	}
 }
@@ -120,7 +122,7 @@ func returnFilterType(labelFilter string) selection.Operator {
 }
 
 // SetupNamespaceSlice sets up the shared effectiveNamespaces from the provided YAML structures
-func SetupNamespaceSlice(namespaces []string, cl client.Client, lggr logr.Logger, serviceAccount string, targetNamespaceLabelSelector labels.Selector, scanningInterval int) ([]string, error) {
+func SetupNamespaceSlice(namespaces []string, cl client.Client, lggr logr.Logger, setLogLevel int, serviceAccount string, targetNamespaceLabelSelector labels.Selector, scanningInterval int) ([]string, error) {
 
 	var effectiveNamespaces []string
 
@@ -136,7 +138,7 @@ func SetupNamespaceSlice(namespaces []string, cl client.Client, lggr logr.Logger
 			activeNamespaceDisplayName = "*"
 		}
 
-		LogWithLevel("Querying for namespace/"+activeNamespaceDisplayName+" with sa/"+serviceAccount, 3, lggr)
+		LogWithLevel("Querying for namespace/"+activeNamespaceDisplayName+" with sa/"+serviceAccount, 3, lggr, setLogLevel)
 		// Get Namespace with the cached context
 		namespaceListOptions := &client.ListOptions{Namespace: activeNamespace, LabelSelector: targetNamespaceLabelSelector}
 		err := cl.List(context.Background(), namespaceList, namespaceListOptions)
@@ -149,7 +151,7 @@ func SetupNamespaceSlice(namespaces []string, cl client.Client, lggr logr.Logger
 		// Loop through NamespaceList, create the effectiveNamespaces slice
 		for _, el := range namespaceList.Items {
 			if !defaults.ContainsString(effectiveNamespaces, el.Name) {
-				LogWithLevel("Adding ns/"+el.Name+" to scope", 3, lggr)
+				LogWithLevel("Adding ns/"+el.Name+" to scope", 3, lggr, setLogLevel)
 				effectiveNamespaces = append(effectiveNamespaces, el.Name)
 			}
 		}
@@ -238,4 +240,47 @@ func GetConfigMap(name string, namespace string, clnt client.Client) (*corev1.Co
 		return targetConfigMap, err
 	}
 	return targetConfigMap, nil
+}
+
+// SetupNewClient takes a cached client, serviceAccount name, the namespace it is in, the cluster endpoint and API Path and creates a new Kubernetes client to act against the API on
+func SetupNewClient(lggr logr.Logger, setLogLevel int, r client.Client, serviceAccount string, serviceAccountNamespace string, clusterEndpoint string, apiPath string) (client.Client, error) {
+	// Get ServiceAccount
+	LogWithLevel("Using ServiceAccount: "+serviceAccount, 2, lggr, setLogLevel)
+	targetServiceAccount, _ := GetServiceAccount(serviceAccount, serviceAccountNamespace, r)
+	var serviceAccountSecretName string
+	targetServiceAccountSecret := &corev1.Secret{}
+
+	// Find the right secret
+	for _, em := range targetServiceAccount.Secrets {
+		secret, _ := GetSecret(em.Name, serviceAccountNamespace, r)
+		if secret.Type == "kubernetes.io/service-account-token" {
+			// Get Secret
+			serviceAccountSecretName = em.Name
+			LogWithLevel("Using Secret: "+serviceAccountSecretName, 2, lggr, setLogLevel)
+			targetServiceAccountSecret, _ = GetSecret(serviceAccountSecretName, serviceAccountNamespace, r)
+		}
+	}
+
+	// We didn't find a Secret to work against the API and thus can't create a new client
+	if serviceAccountSecretName == "" {
+		return *new(client.Client), errors.New("new Kubernetes client creation failed!  No ServiceAccount Secret found")
+	}
+
+	// Set up new client config
+	newConfig := &rest.Config{
+		BearerToken: string(targetServiceAccountSecret.Data[corev1.ServiceAccountTokenKey]),
+		Host:        clusterEndpoint,
+		APIPath:     apiPath,
+		TLSClientConfig: rest.TLSClientConfig{
+			CAData: targetServiceAccountSecret.Data[corev1.ServiceAccountRootCAKey],
+		},
+	}
+
+	// Set up new Client
+	cl, err := client.New(newConfig, client.Options{})
+	if err != nil {
+		return *new(client.Client), err
+	}
+
+	return cl, nil
 }

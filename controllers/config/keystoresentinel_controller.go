@@ -26,7 +26,6 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
@@ -47,6 +46,7 @@ import (
 //===========================================================================================
 // SPOT TYPES
 //===========================================================================================
+
 // KeystoreSentinelReconciler reconciles a KeystoreSentinel object
 type KeystoreSentinelReconciler struct {
 	client.Client
@@ -56,14 +56,16 @@ type KeystoreSentinelReconciler struct {
 //===========================================================================================
 // INIT VARS
 //===========================================================================================
+
 // Implement reconcile.Reconciler so the controller can reconcile objects
 var _ reconcile.Reconciler = &KeystoreSentinelReconciler{}
-var LggrK = log.Log.WithName("keystore-sentinel-controller")
-var SetLogLevelK int
+var lggrK = log.Log.WithName("keystore-sentinel-controller")
+var setLogLevelK int
 
 //===========================================================================================
 // INIT FUNC
 //===========================================================================================
+
 // init is fired when this controller is started
 func init() {
 	// Set logging
@@ -73,6 +75,7 @@ func init() {
 //===========================================================================================
 // RBAC GENERATORS
 //===========================================================================================
+
 //+kubebuilder:rbac:groups=config.polyglot.systems,resources=keystoresentinels,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=config.polyglot.systems,resources=keystoresentinels/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=config.polyglot.systems,resources=keystoresentinels/finalizers,verbs=update
@@ -83,6 +86,7 @@ func init() {
 //===========================================================================================
 // RECONCILE
 //===========================================================================================
+
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
 // TODO(user): Modify the Reconcile function to compare the state specified by
@@ -100,8 +104,8 @@ func (r *KeystoreSentinelReconciler) Reconcile(ctx context.Context, req ctrl.Req
 		DiscoveredKeystoreCertificates: []configv1.KeystoreInformation{},
 	}
 
-	LogWithLevel("Connecting to:"+clusterEndpoint, 3, LggrK)
-	LogWithLevel("API Path:"+apiPath, 3, LggrK)
+	LogWithLevel("Connecting to:"+clusterEndpoint, 3, lggrK, setLogLevelK)
+	LogWithLevel("API Path:"+apiPath, 3, lggrK, setLogLevelK)
 
 	// Fetch the KeystoreSentinel instance
 	keystoreSentinel := &configv1.KeystoreSentinel{}
@@ -111,17 +115,17 @@ func (r *KeystoreSentinelReconciler) Reconcile(ctx context.Context, req ctrl.Req
 			// Request object not found, could have been deleted after reconcile request.
 			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
 			// Return and don't requeue
-			LggrK.Error(err, "KeystoreSentinel resource not found on the cluster.")
+			lggrK.Error(err, "KeystoreSentinel resource not found on the cluster.")
 			return ctrl.Result{}, nil
 		}
 		// Error reading the object - requeue the request.
-		LggrK.Error(err, "Failed to get KeystoreSentinel")
+		lggrK.Error(err, "Failed to get KeystoreSentinel")
 		return ctrl.Result{}, err
 	}
 
 	// Log the used keystoreSentinel
-	LogWithLevel("KeystoreSentinel loaded!  Found '"+keystoreSentinel.Name+"' in 'namespace/"+keystoreSentinel.Namespace+"'", 1, LggrK)
-	SetLogLevelK = defaults.SetDefaultInt(defaults.LogLevel, keystoreSentinel.Spec.LogLevel)
+	LogWithLevel("KeystoreSentinel loaded!  Found '"+keystoreSentinel.Name+"' in 'namespace/"+keystoreSentinel.Namespace+"'", 1, lggrK, setLogLevelK)
+	setLogLevelK = defaults.SetDefaultInt(defaults.LogLevel, keystoreSentinel.Spec.LogLevel)
 
 	// Set default vars
 	scanningInterval := defaults.SetDefaultInt(defaults.ScanningInterval, keystoreSentinel.Spec.ScanningInterval)
@@ -135,7 +139,7 @@ func (r *KeystoreSentinelReconciler) Reconcile(ctx context.Context, req ctrl.Req
 
 	targetNamespaceLabels := keystoreSentinel.Spec.Target.NamespaceLabels
 	targetLabels := keystoreSentinel.Spec.Target.TargetLabels
-	targetLabelSelector, targetNamespaceLabelSelector := SetupLabelSelectors(targetLabels, targetNamespaceLabels, LggrK)
+	targetLabelSelector, targetNamespaceLabelSelector := SetupLabelSelectors(targetLabels, targetNamespaceLabels, lggrK)
 
 	var CertHashList []string
 	//var decodedCertificates []x509.Certificate
@@ -144,53 +148,19 @@ func (r *KeystoreSentinelReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	var expiredKeystoreCount int
 	var expiredKeystoreCertificatesCount int
 
-	LogWithLevel("Processing KeystoreSentinel target: "+targetName, 2, LggrK)
-
-	// Get ServiceAccount
-	LogWithLevel("Using ServiceAccount: "+serviceAccount, 2, LggrK)
-	targetServiceAccount, _ := GetServiceAccount(serviceAccount, keystoreSentinel.Namespace, r.Client)
-	var serviceAccountSecretName string
-	targetServiceAccountSecret := &corev1.Secret{}
-
-	// Find the right secret
-	for _, em := range targetServiceAccount.Secrets {
-		secret, _ := GetSecret(em.Name, keystoreSentinel.Namespace, r.Client)
-		if secret.Type == "kubernetes.io/service-account-token" {
-			// Get Secret
-			serviceAccountSecretName = em.Name
-			LogWithLevel("Using Secret: "+serviceAccountSecretName, 2, LggrK)
-			targetServiceAccountSecret, _ = GetSecret(serviceAccountSecretName, keystoreSentinel.Namespace, r.Client)
-		}
-	}
-
-	// We didn't find a Secret to work against the API and thus can't create a new client
-	if serviceAccountSecretName == "" {
-		LggrK.Error(err, "Failed to find API Token type Secret in ServiceAccount!")
-		LggrK.Info("Running reconciler again in " + strconv.Itoa(scanningInterval) + "s")
-		time.Sleep(time.Second * time.Duration(scanningInterval))
-		return ctrl.Result{}, err
-	}
-
-	// Set up new client config
-	newConfig := &rest.Config{
-		BearerToken: string(targetServiceAccountSecret.Data[corev1.ServiceAccountTokenKey]),
-		Host:        clusterEndpoint,
-		APIPath:     apiPath,
-		TLSClientConfig: rest.TLSClientConfig{
-			CAData: targetServiceAccountSecret.Data[corev1.ServiceAccountRootCAKey],
-		},
-	}
+	LogWithLevel("Processing KeystoreSentinel target: "+targetName, 2, lggrK, setLogLevelK)
 
 	// Set up new Client
-	cl, err := client.New(newConfig, client.Options{})
+	cl, err := SetupNewClient(lggrK, setLogLevelK, r.Client, serviceAccount, keystoreSentinel.Namespace, clusterEndpoint, apiPath)
 	if err != nil {
-		LggrK.Error(err, "Failed to create client")
-		LggrK.Info("Running reconciler again in " + strconv.Itoa(scanningInterval) + "s")
+		lggrK.Error(err, "Failed to create client")
+		lggrK.Info("Running reconciler again in " + strconv.Itoa(scanningInterval) + "s")
 		time.Sleep(time.Second * time.Duration(scanningInterval))
 		return ctrl.Result{}, err
 	}
 
-	effectiveNamespaces, _ := SetupNamespaceSlice(keystoreSentinel.Spec.Target.Namespaces, cl, LggrK, serviceAccount, targetNamespaceLabelSelector, scanningInterval)
+	// Figure out what namespaces we actually have to work with
+	effectiveNamespaces, _ := SetupNamespaceSlice(keystoreSentinel.Spec.Target.Namespaces, cl, lggrK, setLogLevelK, serviceAccount, targetNamespaceLabelSelector, scanningInterval)
 
 	// Loop through the namespaces in scope for this target
 	for _, el := range effectiveNamespaces {
@@ -198,7 +168,7 @@ func (r *KeystoreSentinelReconciler) Reconcile(ctx context.Context, req ctrl.Req
 		// Check to make sure we can even access the Keystore password before scanning for them in this namespace
 		passwordBytes, err := getPasswordBytesFromSpecTarget(keystoreSentinel.Spec.Target.KeystorePassword, el, cl)
 		if err != nil {
-			LggrK.Error(err, "Failed to process keystore password source!")
+			lggrK.Error(err, "Failed to process keystore password source!")
 		}
 		defer zeroing(passwordBytes)
 
@@ -211,14 +181,14 @@ func (r *KeystoreSentinelReconciler) Reconcile(ctx context.Context, req ctrl.Req
 			secretList := &corev1.SecretList{}
 			err = cl.List(context.Background(), secretList, targetListOptions)
 			if err != nil {
-				LggrK.Error(err, "Failed to list secrets in namespace/"+el)
+				lggrK.Error(err, "Failed to list secrets in namespace/"+el)
 			}
 
 			// Loop through Secrets
 			for _, e := range secretList.Items {
 				secretType := string(e.Type)
 				if secretType == string(corev1.SecretTypeOpaque) || secretType == string(corev1.SecretTypeTLS) {
-					LogWithLevel("Getting secret/"+e.Name+" in namespace/"+el+" (type="+secretType+")", 3, LggrK)
+					LogWithLevel("Getting secret/"+e.Name+" in namespace/"+el+" (type="+secretType+")", 3, lggrK, setLogLevelK)
 
 					secretItem, _ := GetSecret(string(e.Name), el, cl)
 
@@ -234,31 +204,31 @@ func (r *KeystoreSentinelReconciler) Reconcile(ctx context.Context, req ctrl.Req
 							// No JKS object found in this secret
 						} else {
 							// Keystore is found
-							LogWithLevel("KEYSTORE FOUND! - ns/"+el+" - secret/"+string(e.Name)+" - key:"+k, 3, LggrK)
+							LogWithLevel("KEYSTORE FOUND! - ns/"+el+" - secret/"+string(e.Name)+" - key:"+k, 3, lggrK, setLogLevelK)
 							keystoreCount++
 
 							certs, err := ProcessKeystoreIntoCertificates(keystoreObj)
 							if err != nil {
-								LggrK.Error(err, "Failed to process keystore into certificates!")
+								lggrK.Error(err, "Failed to process keystore into certificates!")
 							}
 							for keystoreAlias, certSlice := range certs {
 
 								for _, cert := range certSlice {
 									// Check to see if this has already been added
-									sha_str := createUniqueCertificateChecksum(targetKind+"-"+el+"-"+e.Name+"-"+cert.Subject.CommonName+"-"+cert.Issuer.CommonName, &cert)
+									shaStr := createUniqueCertificateChecksum(targetKind+"-"+el+"-"+e.Name+"-"+cert.Subject.CommonName+"-"+cert.Issuer.CommonName, &cert)
 
-									if defaults.ContainsString(CertHashList, sha_str) {
+									if defaults.ContainsString(CertHashList, shaStr) {
 										// Skipping Certificate
-										LogWithLevel("Already found "+sha_str, 3, LggrK)
+										LogWithLevel("Already found "+shaStr, 3, lggrK, setLogLevelK)
 									} else {
 										// Add + Process
-										LogWithLevel("Adding "+sha_str, 3, LggrK)
-										CertHashList = append(CertHashList, sha_str)
+										LogWithLevel("Adding "+shaStr, 3, lggrK, setLogLevelK)
+										CertHashList = append(CertHashList, shaStr)
 
 										discovered, messages := helpers.ParseKeystoreCertificateIntoObjects(&cert, timeOut, el, e.Name, k, targetKind, targetAPIVersion, keystoreAlias)
 										// Loop through passed messages for log level 3
 										for _, m := range messages {
-											LogWithLevel(m, 3, LggrK)
+											LogWithLevel(m, 3, lggrK, setLogLevelK)
 										}
 
 										// Add discovered keystore to DiscoveredKeystore
@@ -286,17 +256,17 @@ func (r *KeystoreSentinelReconciler) Reconcile(ctx context.Context, req ctrl.Req
 			}
 		//=========================== CONFIGMAPS
 		case "ConfigMap":
-			LogWithLevel("Checking for access to ConfigMap in ns/"+el, 3, LggrK)
+			LogWithLevel("Checking for access to ConfigMap in ns/"+el, 3, lggrK, setLogLevelK)
 			// Get the list of ConfigMaps in this namespace
 			configMapList := &corev1.ConfigMapList{}
 			err = cl.List(context.Background(), configMapList, targetListOptions)
 			if err != nil {
-				LggrK.Error(err, "Failed to list ConfigMaps in ns/"+el)
+				lggrK.Error(err, "Failed to list ConfigMaps in ns/"+el)
 			}
 
 			// Loop through ConfigMaps
 			for _, e := range configMapList.Items {
-				LogWithLevel("Getting configmap/"+e.Name+" in namespace/"+el, 3, LggrK)
+				LogWithLevel("Getting configmap/"+e.Name+" in namespace/"+el, 3, lggrK, setLogLevelK)
 				configMapItem, _ := GetConfigMap(string(e.Name), el, cl)
 
 				// Loop through the actual ConfigMap data
@@ -310,31 +280,31 @@ func (r *KeystoreSentinelReconciler) Reconcile(ctx context.Context, req ctrl.Req
 						// No JKS object found in this configmap
 					} else {
 						// Keystore is found
-						LogWithLevel("KEYSTORE FOUND! - ns/"+el+" - configmap/"+string(e.Name)+" - key:"+k, 3, LggrK)
+						LogWithLevel("KEYSTORE FOUND! - ns/"+el+" - configmap/"+string(e.Name)+" - key:"+k, 3, lggrK, setLogLevelK)
 						keystoreCount++
 
 						certs, err := ProcessKeystoreIntoCertificates(keystoreObj)
 						if err != nil {
-							LggrK.Error(err, "Failed to process keystore into certificates!")
+							lggrK.Error(err, "Failed to process keystore into certificates!")
 						}
 
 						for keystoreAlias, certSlice := range certs {
 							for _, cert := range certSlice {
 								// Check to see if this has already been added
-								sha_str := createUniqueCertificateChecksum(targetKind+"-"+el+"-"+e.Name+"-"+cert.Subject.CommonName+"-"+cert.Issuer.CommonName, &cert)
+								shaStr := createUniqueCertificateChecksum(targetKind+"-"+el+"-"+e.Name+"-"+cert.Subject.CommonName+"-"+cert.Issuer.CommonName, &cert)
 
-								if defaults.ContainsString(CertHashList, sha_str) {
+								if defaults.ContainsString(CertHashList, shaStr) {
 									// Skipping Certificate
-									LogWithLevel("Already found "+sha_str, 3, LggrK)
+									LogWithLevel("Already found "+shaStr, 3, lggrK, setLogLevelK)
 								} else {
 									// Add + Process
-									LogWithLevel("Adding "+sha_str, 3, LggrK)
-									CertHashList = append(CertHashList, sha_str)
+									LogWithLevel("Adding "+shaStr, 3, lggrK, setLogLevelK)
+									CertHashList = append(CertHashList, shaStr)
 
 									discovered, messages := helpers.ParseKeystoreCertificateIntoObjects(&cert, timeOut, el, e.Name, k, targetKind, targetAPIVersion, keystoreAlias)
 									// Loop through passed messages for log level 3
 									for _, m := range messages {
-										LogWithLevel(m, 3, LggrK)
+										LogWithLevel(m, 3, lggrK, setLogLevelK)
 									}
 
 									// Add discovered keystore to DiscoveredKeystore
@@ -361,8 +331,8 @@ func (r *KeystoreSentinelReconciler) Reconcile(ctx context.Context, req ctrl.Req
 		//=========================== DEFAULT - INVALID KIND
 		default:
 			// Unsupported Object Kind
-			LggrK.Info("Invalid Target Kind!")
-			LggrK.Info("Running reconciler again in " + strconv.Itoa(scanningInterval) + "s")
+			lggrK.Info("Invalid Target Kind!")
+			lggrK.Info("Running reconciler again in " + strconv.Itoa(scanningInterval) + "s")
 			time.Sleep(time.Second * time.Duration(scanningInterval))
 			return ctrl.Result{}, nil
 		}
@@ -384,7 +354,7 @@ func (r *KeystoreSentinelReconciler) Reconcile(ctx context.Context, req ctrl.Req
 
 	// Process reports if needed, only if there are new certificates at risk
 	if expiredKeystoreCertificatesCount > 0 {
-		keystoreSentinel.Status.LastReportSent = processKeystoreReport(*keystoreSentinel, LggrK, r.Client)
+		keystoreSentinel.Status.LastReportSent = processKeystoreReport(*keystoreSentinel, lggrK, r.Client)
 	}
 
 	// Check the difference in structs
@@ -395,21 +365,14 @@ func (r *KeystoreSentinelReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	if statusChanged {
 		err = r.Status().Update(ctx, keystoreSentinel)
 		if err != nil {
-			LggrK.Error(err, "Failed to update KeystoreSentinel status")
+			lggrK.Error(err, "Failed to update KeystoreSentinel status")
 			return ctrl.Result{}, err
 		}
 	}
-	LogWithLevel("Found "+strconv.Itoa(len(keystoreSentinel.Status.DiscoveredKeystoreCertificates))+" Certificates in "+strconv.Itoa(keystoreCount)+" Keystores, "+strconv.Itoa(expiredKeystoreCount)+" Keystores of which have "+strconv.Itoa(expiredKeystoreCertificatesCount)+" certificates that are at risk of expiring", 2, LggrK)
-
-	// Reconcile successful - don't requeue
-	// return ctrl.Result{}, nil
-	// Reconcile failed due to error - requeue
-	// return ctrl.Result{}, err
-	// Requeue for any reason other than an error
-	// return ctrl.Result{Requeue: true}, nil
+	LogWithLevel("Found "+strconv.Itoa(len(keystoreSentinel.Status.DiscoveredKeystoreCertificates))+" Certificates in "+strconv.Itoa(keystoreCount)+" Keystores, "+strconv.Itoa(expiredKeystoreCount)+" Keystores of which have "+strconv.Itoa(expiredKeystoreCertificatesCount)+" certificates that are at risk of expiring", 2, lggrK, setLogLevelK)
 
 	// Reconcile for any reason other than an error after 5 seconds
-	LggrK.Info("Running reconciler again in " + strconv.Itoa(scanningInterval) + "s")
+	lggrK.Info("Running reconciler again in " + strconv.Itoa(scanningInterval) + "s")
 	return ctrl.Result{RequeueAfter: time.Second * time.Duration(scanningInterval)}, nil
 
 }

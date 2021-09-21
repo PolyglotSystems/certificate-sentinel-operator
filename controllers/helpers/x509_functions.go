@@ -112,22 +112,22 @@ func ParseCertificatesIntoLists(certs []*x509.Certificate, timeOut []configv1.Ti
 		// Hash the Certificate and add it to the string slice
 		h := sha1.New()
 		h.Write(cert.Raw)
-		//sha_str := fmt.Sprintf("%x", h.Sum(nil))
-		sha_str := hex.EncodeToString(h.Sum(nil))
+		//shaStr := fmt.Sprintf("%x", h.Sum(nil))
+		shaStr := hex.EncodeToString(h.Sum(nil))
 
 		elFound := false
 		for _, v := range RHashL {
-			if v == sha_str {
+			if v == shaStr {
 				elFound = true
 			}
 		}
 
 		// Check to see if this certificate has been added yet
-		//if containsString(RHashL, sha_str) {
+		//if containsString(RHashL, shaStr) {
 		if elFound {
 			// Skipping Certificate
 		} else {
-			RHashL = append(RHashL, sha_str)
+			RHashL = append(RHashL, shaStr)
 
 			// This certificate is not expired
 			discoveredL = append(discoveredL, certInfo)
