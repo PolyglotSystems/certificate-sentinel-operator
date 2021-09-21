@@ -6,8 +6,6 @@ import (
 	"strings"
 )
 
-const ()
-
 var (
 	// ScanningInterval is the number of seconds to wait before the controller starts again
 	ScanningInterval = 60

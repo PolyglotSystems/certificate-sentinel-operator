@@ -44,7 +44,7 @@ const LoggerReportLine = `| {{ .APIVersion }} | {{ .Kind }} | {{ .Namespace }} |
 // LoggerReportHeader is a template constant provides the template of the tabulated and delimited table header (and footer, technically) columns in a CertificateSentinel STDOUT Logger report
 const LoggerReportHeader = `| {{ .APIVersion }} | {{ .Kind }} | {{ .Namespace }} | {{ .Name }} | {{ .Key }} | {{ .CommonName }} | {{ .IsCA }} | {{ .CertificateAuthorityCommonName }} | {{ .ExpirationDate }} | {{ .TriggeredDaysOut }} |`
 
-// loggerReportStructure provides the overall data structure to the CertificateSentinel STDOUT LoggerReport template
+// LoggerReportStructure provides the overall data structure to the CertificateSentinel STDOUT LoggerReport template
 type LoggerReportStructure struct {
 	Namespace          string
 	Name               string
@@ -72,7 +72,7 @@ type LoggerReportHeaderStructure struct {
 	TriggeredDaysOut               string
 }
 
-// loggerReportLineStructure provides the data structure for the CertificateSentinel LoggerReportLine template
+// LoggerReportLineStructure provides the data structure for the CertificateSentinel LoggerReportLine template
 type LoggerReportLineStructure struct {
 	APIVersion                     string
 	Kind                           string
