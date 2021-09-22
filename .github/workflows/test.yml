@@ -55,7 +55,7 @@ jobs:
     name: Build Container
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    needs: test
+    needs: test-and-build
     steps:
 
     - name: Check out code
