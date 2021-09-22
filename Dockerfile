@@ -1,5 +1,5 @@
 # Build the manager binary
-FROM golang:1.16 as builder
+FROM quay.io/polyglotsystems/golang-ubi as builder
 
 WORKDIR /workspace
 # Copy the Go Modules manifests
