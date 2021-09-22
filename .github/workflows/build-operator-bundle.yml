@@ -24,7 +24,7 @@ jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
 
     - name: Set up Go
@@ -51,10 +51,11 @@ jobs:
     - name: Run go vet against code
       run: |
         go vet ./...
-  build:
-    name: Build
+  build-operator:
+    name: Build Operator
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
+    needs: test
     steps:
 
     - name: Set up QEMU
@@ -72,9 +73,7 @@ jobs:
           quay.io/polyglotsystems/certificate-sentinel-operator
         # generate Docker tags based on the following events/attributes
         tags: |
-          type=schedule
           type=ref,event=branch
-          type=ref,event=pr
           type=semver,pattern={{version}}
           type=semver,pattern={{major}}.{{minor}}
           type=semver,pattern={{major}}
