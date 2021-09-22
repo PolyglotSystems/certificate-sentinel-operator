@@ -50,3 +50,95 @@ jobs:
     - name: Build the Operator
       run: |
         go build -o bin/manager main.go
+
+  build-container:
+    name: Build Container
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: test
+    steps:
+
+    - name: Check out code
+      uses: actions/checkout@v2.3.4
+
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v1
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v1
+
+    - name: Docker meta
+      id: meta
+      uses: docker/metadata-action@v3
+      with:
+        # list of Docker images to use as base name for tags
+        images: |
+          quay.io/polyglotsystems/certificate-sentinel-operator
+        # generate Docker tags based on the following events/attributes
+        tags: |
+          type=ref,event=branch
+          type=ref,event=tag
+          type=semver,pattern={{version}}
+          type=sha
+
+    - name: Login to Quay
+      uses: docker/login-action@v1 
+      with:
+        registry: quay.io
+        username: "${{ secrets.REGISTRY_USERNAME }}"
+        password: "${{ secrets.REGISTRY_TOKEN }}"
+
+    - name: Build image
+      uses: docker/build-push-action@v2
+      with:
+        context: .
+        push: false
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+
+  # Build the operator bundle in a container
+  build-bundle-container:
+    name: Build Operator Bundle Container
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [test, build-container]
+    steps:
+
+    - name: Check out code
+      uses: actions/checkout@v2.3.4
+
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v1
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v1
+
+    - name: Docker meta
+      id: bundlemeta
+      uses: docker/metadata-action@v3
+      with:
+        # list of Docker images to use as base name for tags
+        images: |
+          quay.io/polyglotsystems/certificate-sentinel-operator-bundle
+        # generate Docker tags based on the following events/attributes
+        tags: |
+          type=ref,event=branch
+          type=ref,event=tag
+          type=semver,pattern={{version}}
+          type=sha
+
+    - name: Login to Quay
+      uses: docker/login-action@v1 
+      with:
+        registry: quay.io
+        username: "${{ secrets.REGISTRY_USERNAME }}"
+        password: "${{ secrets.REGISTRY_TOKEN }}"
+
+    - name: Build and push
+      uses: docker/build-push-action@v2
+      with:
+        context: .
+        push: false
+        file: bundle.Dockerfile
+        tags: ${{ steps.bundlemeta.outputs.tags }}
+        labels: ${{ steps.bundlemeta.outputs.labels }}
