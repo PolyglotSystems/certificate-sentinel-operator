@@ -37,7 +37,7 @@ jobs:
         mkdir -p $GITHUB_WORKSPACE/bin
         curl -sSLk https://github.com/operator-framework/operator-sdk/releases/download/v1.12.0/operator-sdk_linux_amd64 -o $GITHUB_WORKSPACE/bin/operator-sdk
         chmod +x $GITHUB_WORKSPACE/bin/operator-sdk
-        echo "::add-path::$GITHUB_WORKSPACE/bin/operator-sdk"
+        echo "$GITHUB_WORKSPACE/bin" >> $GITHUB_PATH
 
     - name: Set up QEMU
       uses: docker/setup-qemu-action@v1
