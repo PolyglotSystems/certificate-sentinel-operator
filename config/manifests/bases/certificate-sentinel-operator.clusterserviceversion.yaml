@@ -1,0 +1,65 @@
+apiVersion: operators.coreos.com/v1alpha1
+kind: ClusterServiceVersion
+metadata:
+  annotations:
+    alm-examples: '[]'
+    capabilities: Basic Install
+  name: certificate-sentinel-operator.v0.0.0
+  namespace: placeholder
+spec:
+  apiservicedefinitions: {}
+  customresourcedefinitions:
+    owned:
+    - description: CertificateSentinel is the Schema for the certificatesentinels
+        API
+      displayName: Certificate Sentinel
+      kind: CertificateSentinel
+      name: certificatesentinels.config.polyglot.systems
+      version: v1
+    - description: KeystoreSentinel is the Schema for the keystoresentinels API
+      displayName: Keystore Sentinel
+      kind: KeystoreSentinel
+      name: keystoresentinels.config.polyglot.systems
+      version: v1
+  description: Scan and report on x509 Certificates and Java Keystores that will soon
+    expire
+  displayName: Certificate Sentinel
+  icon:
+  - base64data: ""
+    mediatype: ""
+  install:
+    spec:
+      deployments: null
+    strategy: ""
+  installModes:
+  - supported: false
+    type: OwnNamespace
+  - supported: false
+    type: SingleNamespace
+  - supported: false
+    type: MultiNamespace
+  - supported: true
+    type: AllNamespaces
+  keywords:
+  - ssl
+  - x509
+  - certificate
+  - certificates
+  - pem
+  - tls
+  - jks
+  - java
+  - keystore
+  - scanning
+  - reporting
+  links:
+  - name: Certificate Sentinel Operator
+    url: https://certificate-sentinel-operator.domain
+  maintainers:
+  - email: ken@kenmoini.com
+    name: Ken Moini
+  maturity: alpha
+  provider:
+    name: Polyglot Systems
+    url: https://github.com/PolyglotSystems/certificate-sentinel-operator/
+  version: 0.0.1

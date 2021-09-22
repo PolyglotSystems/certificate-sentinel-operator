@@ -1,0 +1,288 @@
+apiVersion: operators.coreos.com/v1alpha1
+kind: ClusterServiceVersion
+metadata:
+  annotations:
+    alm-examples: |-
+      [
+        {
+          "apiVersion": "config.polyglot.systems/v1",
+          "kind": "CertificateSentinel",
+          "metadata": {
+            "name": "certificatesentinel-sample"
+          },
+          "spec": {
+            "alerts": [
+              {
+                "name": "secrets-logger",
+                "type": "logger"
+              }
+            ],
+            "scanningInterval": 60,
+            "targets": [
+              {
+                "apiVersion": "v1",
+                "kind": "Secret",
+                "name": "all-secrets",
+                "namespaces": [
+                  "*"
+                ],
+                "serviceAccount": "some-service-account"
+              }
+            ]
+          }
+        },
+        {
+          "apiVersion": "config.polyglot.systems/v1",
+          "kind": "KeystoreSentinel",
+          "metadata": {
+            "name": "keystoresentinel-sample"
+          },
+          "spec": {
+            "foo": "bar"
+          }
+        }
+      ]
+    capabilities: Basic Install
+    operators.operatorframework.io/builder: operator-sdk-v1.8.0-ocp
+    operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
+  name: certificate-sentinel-operator.v0.0.1
+  namespace: placeholder
+spec:
+  apiservicedefinitions: {}
+  customresourcedefinitions:
+    owned:
+    - description: CertificateSentinel is the Schema for the certificatesentinels
+        API
+      displayName: Certificate Sentinel
+      kind: CertificateSentinel
+      name: certificatesentinels.config.polyglot.systems
+      version: v1
+    - description: KeystoreSentinel is the Schema for the keystoresentinels API
+      displayName: Keystore Sentinel
+      kind: KeystoreSentinel
+      name: keystoresentinels.config.polyglot.systems
+      version: v1
+  description: Scan and report on x509 Certificates and Java Keystores that will soon
+    expire
+  displayName: Certificate Sentinel
+  icon:
+  - base64data: ""
+    mediatype: ""
+  install:
+    spec:
+      clusterPermissions:
+      - rules:
+        - apiGroups:
+          - config.polyglot.systems
+          resources:
+          - certificatesentinels
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - config.polyglot.systems
+          resources:
+          - certificatesentinels/finalizers
+          verbs:
+          - update
+        - apiGroups:
+          - config.polyglot.systems
+          resources:
+          - certificatesentinels/status
+          verbs:
+          - get
+          - patch
+          - update
+        - apiGroups:
+          - config.polyglot.systems
+          resources:
+          - keystoresentinels
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - config.polyglot.systems
+          resources:
+          - keystoresentinels/finalizers
+          verbs:
+          - update
+        - apiGroups:
+          - config.polyglot.systems
+          resources:
+          - keystoresentinels/status
+          verbs:
+          - get
+          - patch
+          - update
+        - apiGroups:
+          - ""
+          resources:
+          - configmaps
+          verbs:
+          - get
+          - list
+          - watch
+        - apiGroups:
+          - ""
+          resources:
+          - secrets
+          verbs:
+          - get
+          - list
+          - watch
+        - apiGroups:
+          - ""
+          resources:
+          - serviceaccounts
+          verbs:
+          - get
+          - list
+          - watch
+        - apiGroups:
+          - authentication.k8s.io
+          resources:
+          - tokenreviews
+          verbs:
+          - create
+        - apiGroups:
+          - authorization.k8s.io
+          resources:
+          - subjectaccessreviews
+          verbs:
+          - create
+        serviceAccountName: certificate-sentinel-operator-controller-manager
+      deployments:
+      - name: certificate-sentinel-operator-controller-manager
+        spec:
+          replicas: 1
+          selector:
+            matchLabels:
+              control-plane: controller-manager
+          strategy: {}
+          template:
+            metadata:
+              labels:
+                control-plane: controller-manager
+            spec:
+              containers:
+              - args:
+                - --secure-listen-address=0.0.0.0:8443
+                - --upstream=http://127.0.0.1:8080/
+                - --logtostderr=true
+                - --v=10
+                image: registry.redhat.io/openshift4/ose-kube-rbac-proxy:v4.8
+                name: kube-rbac-proxy
+                ports:
+                - containerPort: 8443
+                  name: https
+                resources: {}
+              - args:
+                - --health-probe-bind-address=:8081
+                - --metrics-bind-address=127.0.0.1:8080
+                - --leader-elect
+                command:
+                - /manager
+                image: quay.io/polyglotsystems/certificate-sentinel-operator:latest
+                livenessProbe:
+                  httpGet:
+                    path: /healthz
+                    port: 8081
+                  initialDelaySeconds: 15
+                  periodSeconds: 20
+                name: manager
+                readinessProbe:
+                  httpGet:
+                    path: /readyz
+                    port: 8081
+                  initialDelaySeconds: 5
+                  periodSeconds: 10
+                resources:
+                  limits:
+                    cpu: 100m
+                    memory: 30Mi
+                  requests:
+                    cpu: 100m
+                    memory: 20Mi
+                securityContext:
+                  allowPrivilegeEscalation: false
+              securityContext:
+                runAsNonRoot: true
+              serviceAccountName: certificate-sentinel-operator-controller-manager
+              terminationGracePeriodSeconds: 10
+      permissions:
+      - rules:
+        - apiGroups:
+          - ""
+          resources:
+          - configmaps
+          verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+          - delete
+        - apiGroups:
+          - coordination.k8s.io
+          resources:
+          - leases
+          verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+          - delete
+        - apiGroups:
+          - ""
+          resources:
+          - events
+          verbs:
+          - create
+          - patch
+        serviceAccountName: certificate-sentinel-operator-controller-manager
+    strategy: deployment
+  installModes:
+  - supported: false
+    type: OwnNamespace
+  - supported: false
+    type: SingleNamespace
+  - supported: false
+    type: MultiNamespace
+  - supported: true
+    type: AllNamespaces
+  keywords:
+  - ssl
+  - x509
+  - certificate
+  - certificates
+  - pem
+  - tls
+  - jks
+  - java
+  - keystore
+  - scanning
+  - reporting
+  links:
+  - name: Certificate Sentinel Operator
+    url: https://certificate-sentinel-operator.domain
+  maintainers:
+  - email: ken@kenmoini.com
+    name: Kemo
+  maturity: alpha
+  provider:
+    name: Polyglot Systems
+    url: https://github.com/PolyglotSystems/certificate-sentinel-operator/
+  version: 0.0.1
