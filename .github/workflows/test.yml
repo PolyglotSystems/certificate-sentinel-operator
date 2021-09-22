@@ -3,11 +3,6 @@
 #
 name: Tests
 on:
-  pull_request:
-    paths-ignore:
-      - 'README.md'
-      - 'docs/'
-      - 'examples/'
   push:
     paths-ignore:
       - 'README.md'
@@ -24,7 +19,7 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
 
     - name: Set up Go
@@ -51,3 +46,7 @@ jobs:
     - name: Run go vet against code
       run: |
         go vet ./...
+
+    - name: Build the Operator
+      run: |
+        go build -o bin/manager main.go
