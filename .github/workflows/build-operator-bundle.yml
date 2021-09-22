@@ -20,6 +20,37 @@ on:
   # schedule:
   #   - cron: '0 13 * * *'
 jobs:
+  # ensure the code builds...
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+
+    - name: Set up Go
+      uses: actions/setup-go@v2.1.4
+      with:
+        go-version: '1.16'
+      id: go
+
+    - name: Check out code into the Go module directory
+      uses: actions/checkout@v2.3.4
+
+    - name: Get dependencies
+      run: |
+        go mod download
+
+    - name: Operator Generators
+      run: |
+        make generate && make manifests
+
+    - name: Run go fmt against code
+      run: |
+        go fmt ./...
+
+    - name: Run go vet against code
+      run: |
+        go vet ./...
   build:
     name: Build
     runs-on: ubuntu-latest
@@ -38,7 +69,6 @@ jobs:
       with:
         # list of Docker images to use as base name for tags
         images: |
-          polyglotsystems/certificate-sentinel-operator
           quay.io/polyglotsystems/certificate-sentinel-operator
         # generate Docker tags based on the following events/attributes
         tags: |
