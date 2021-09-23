@@ -45,7 +45,7 @@ metadata:
     capabilities: Basic Install
     operators.operatorframework.io/builder: operator-sdk-v1.8.0-ocp
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
-  name: certificate-sentinel-operator.v0.0.1
+  name: certificate-sentinel-operator.v0.0.2
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
@@ -285,4 +285,4 @@ spec:
   provider:
     name: Polyglot Systems
     url: https://github.com/PolyglotSystems/certificate-sentinel-operator/
-  version: 0.0.1
+  version: 0.0.2

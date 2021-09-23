@@ -22,7 +22,19 @@ This Operator provides two Custom Resource Definitions (CRDs):
 
 ## Deploying the Operator
 
-PROD IDK yet, hold on, i'm doing it dev mode deployment bby
+### Deploy to Red Hat OpenShift
+
+If you already have an OpenShift cluster or Kubernetes cluster with OLM deployed, you can simply apply the Operator CatalogSource and then create the needed Subscription from there.
+
+```bash
+# Create the Operator CatalogSource in the openshift-marketplace Namespace/Project
+oc apply -f https://raw.githubusercontent.com/PolyglotSystems/certificate-sentinel-operator/main/deploy/01-catalogsource.yaml -n openshift-marketplace
+
+# Create a Subscription for the Operator (this installs the Operator)
+oc apply -f https://raw.githubusercontent.com/PolyglotSystems/certificate-sentinel-operator/main/deploy/02-subscription.yaml -n openshift-operators
+```
+
+From here you should just need to create the needed RBAC and deploy the CRDs!
 
 ### Development & Testing Deployment
 
@@ -30,8 +42,40 @@ Requires Golang 1.16+ and the DevelopmentTools dnf group.
 
 ```bash
 # plz be `oc login`'d already
-# also also need @DevelopmentTools & golang installed
+# also also need @DevelopmentTools, Podman, & Golang installed
+
+# Clone
 git clone https://github.com/PolyglotSystems/certificate-sentinel-operator
 cd certificate-sentinel-operator/
+
+# Update the VERSION variable
+vi Makefile
+
+# Test & Build Test
 make generate && make manifests && make install run
 ```
+
+At this point, you have the Operator built and interacting with the current context cluster - in order to release a new version, the following workflow would apply:
+
+```bash
+# Create the Operator Container
+make podman build IMG="quay.io/username/repo:vX.Y.Z"
+make podman push IMG="quay.io/username/repo:vX.Y.Z"
+
+# Create the Operator Bundle - this is basically just meta data
+make bundle
+make bundle-build BUNDLE_IMG="quay.io/username/repo-bundle:vX.Y.Z"
+make bundle-push BUNDLE_IMG="quay.io/username/repo-bundle:vX.Y.Z"
+
+# For a new addition to the Operator Catalog
+make catalog-build CATALOG_IMG="quay.io/username/operator-catalog:vX.Y.Z"
+make catalog-push CATALOG_IMG="quay.io/username/operator-catalog:vX.Y.Z"
+
+# Git workflow for Github Actions
+git add .
+git commit -m "new version vX.Y.Z"
+git tag vX.Y.Z HEAD
+git push origin vX.Y.Z
+```
+
+So long as you have the `REGISTRY_USERNAME`, `REGISTRY_TOKEN`, and `GHUB_TOKEN` set up as GitHub Action Secrets then the automation workflow should kick off.

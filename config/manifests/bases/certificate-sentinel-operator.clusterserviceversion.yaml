@@ -62,4 +62,4 @@ spec:
   provider:
     name: Polyglot Systems
     url: https://github.com/PolyglotSystems/certificate-sentinel-operator/
-  version: 0.0.1
+  version: 0.0.2

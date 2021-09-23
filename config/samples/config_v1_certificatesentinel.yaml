@@ -3,14 +3,23 @@ kind: CertificateSentinel
 metadata:
   name: certificatesentinel-sample
 spec:
-  targets:
-    - name: all-secrets
-      namespaces:
-      - "*"
-      kind: Secret
-      apiVersion: v1
-      serviceAccount: some-service-account
-  alerts:
-    - name: secrets-logger
-      type: logger
+  logLevel: 2
   scanningInterval: 60
+  alert:
+    name: secrets-logger
+    type: logger
+    config:
+      reportInterval: debug
+  target:
+    apiVersion: v1
+    daysOut:
+      - 30
+      - 60
+      - 90
+      - 9001
+      - 9000
+    kind: Secret
+    name: all-secrets
+    namespaces:
+      - '*'
+    serviceAccount: some-service-account
