@@ -11,24 +11,31 @@ metadata:
             "name": "certificatesentinel-sample"
           },
           "spec": {
-            "alerts": [
-              {
-                "name": "secrets-logger",
-                "type": "logger"
-              }
-            ],
+            "alert": {
+              "config": {
+                "reportInterval": "debug"
+              },
+              "name": "secrets-logger",
+              "type": "logger"
+            },
+            "logLevel": 2,
             "scanningInterval": 60,
-            "targets": [
-              {
-                "apiVersion": "v1",
-                "kind": "Secret",
-                "name": "all-secrets",
-                "namespaces": [
-                  "*"
-                ],
-                "serviceAccount": "some-service-account"
-              }
-            ]
+            "target": {
+              "apiVersion": "v1",
+              "daysOut": [
+                30,
+                60,
+                90,
+                9001,
+                9000
+              ],
+              "kind": "Secret",
+              "name": "all-secrets",
+              "namespaces": [
+                "*"
+              ],
+              "serviceAccount": "some-service-account"
+            }
           }
         },
         {
@@ -38,7 +45,35 @@ metadata:
             "name": "keystoresentinel-sample"
           },
           "spec": {
-            "foo": "bar"
+            "alert": {
+              "config": {
+                "reportInterval": "debug"
+              },
+              "name": "secrets-logger",
+              "type": "logger"
+            },
+            "logLevel": 2,
+            "scanningInterval": 60,
+            "target": {
+              "apiVersion": "v1",
+              "daysOut": [
+                30,
+                60,
+                90,
+                9001,
+                9000
+              ],
+              "keystorePassword": {
+                "plaintext": "changeit",
+                "type": "plaintext"
+              },
+              "kind": "Secret",
+              "name": "all-secrets",
+              "namespaces": [
+                "*"
+              ],
+              "serviceAccount": "some-service-account"
+            }
           }
         }
       ]
@@ -192,7 +227,7 @@ spec:
                 - --leader-elect
                 command:
                 - /manager
-                image: quay.io/polyglotsystems/certificate-sentinel-operator:latest
+                image: quay.io/polyglotsystems/certificate-sentinel-operator:v0.0.2
                 livenessProbe:
                   httpGet:
                     path: /healthz
@@ -280,7 +315,7 @@ spec:
     url: https://certificate-sentinel-operator.domain
   maintainers:
   - email: ken@kenmoini.com
-    name: Kemo
+    name: Ken Moini
   maturity: alpha
   provider:
     name: Polyglot Systems

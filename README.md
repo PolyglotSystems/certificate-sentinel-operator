@@ -59,8 +59,8 @@ At this point, you have the Operator built and interacting with the current cont
 
 ```bash
 # Create the Operator Container
-make podman build IMG="quay.io/username/repo:vX.Y.Z"
-make podman push IMG="quay.io/username/repo:vX.Y.Z"
+make podman-build IMG="quay.io/username/repo:vX.Y.Z"
+make podman-push IMG="quay.io/username/repo:vX.Y.Z"
 
 # Create the Operator Bundle - this is basically just meta data
 make bundle
