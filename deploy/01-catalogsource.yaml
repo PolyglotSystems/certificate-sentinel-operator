@@ -1,0 +1,10 @@
+apiVersion: operators.coreos.com/v1alpha1
+kind: CatalogSource
+metadata:
+  name: polyglotsystems-catalog
+  namespace: openshift-marketplace
+spec:
+  sourceType: grpc
+  image: quay.io/polyglotsystems/operator-catalog:v0.0.2
+  displayName: Polyglot Systems Operators
+  publisher: Polyglot Systems
