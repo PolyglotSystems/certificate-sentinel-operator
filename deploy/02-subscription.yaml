@@ -8,4 +8,4 @@ spec:
   name: certificate-sentinel-operator
   source: polyglotsystems-catalog
   sourceNamespace: openshift-marketplace
-  startingCSV: certificate-sentinel-operator.v0.0.2
+  startingCSV: certificate-sentinel-operator.v0.0.3

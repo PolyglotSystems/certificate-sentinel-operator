@@ -80,7 +80,7 @@ metadata:
     capabilities: Basic Install
     operators.operatorframework.io/builder: operator-sdk-v1.8.0-ocp
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
-  name: certificate-sentinel-operator.v0.0.2
+  name: certificate-sentinel-operator.v0.0.3
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
@@ -228,7 +228,7 @@ spec:
                 - --leader-elect
                 command:
                 - /manager
-                image: quay.io/polyglotsystems/certificate-sentinel-operator:v0.0.2
+                image: quay.io/polyglotsystems/certificate-sentinel-operator:v0.0.3
                 livenessProbe:
                   httpGet:
                     path: /healthz
@@ -321,4 +321,4 @@ spec:
   provider:
     name: Polyglot Systems
     url: https://github.com/PolyglotSystems/certificate-sentinel-operator/
-  version: 0.0.2
+  version: 0.0.3

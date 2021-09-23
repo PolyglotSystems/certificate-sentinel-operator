@@ -4,7 +4,7 @@ metadata:
   annotations:
     alm-examples: '[]'
     capabilities: Basic Install
-  name: certificate-sentinel-operator.v0.0.2
+  name: certificate-sentinel-operator.v0.0.3
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
@@ -63,4 +63,4 @@ spec:
   provider:
     name: Polyglot Systems
     url: https://github.com/PolyglotSystems/certificate-sentinel-operator/
-  version: 0.0.2
+  version: 0.0.3
