@@ -165,6 +165,7 @@ func (r *KeystoreSentinelReconciler) Reconcile(ctx context.Context, req ctrl.Req
 		passwordBytes, err := getPasswordBytesFromSpecTarget(keystoreSentinel.Spec.Target.KeystorePassword, el, cl)
 		if err != nil {
 			lggrK.Error(err, "Failed to process keystore password source!")
+			return ctrl.Result{}, err
 		}
 		defer zeroing(passwordBytes)
 
@@ -178,6 +179,7 @@ func (r *KeystoreSentinelReconciler) Reconcile(ctx context.Context, req ctrl.Req
 			err = cl.List(context.Background(), secretList, targetListOptions)
 			if err != nil {
 				lggrK.Error(err, "Failed to list secrets in namespace/"+el)
+				return ctrl.Result{}, err
 			}
 
 			// Loop through Secrets
@@ -206,6 +208,7 @@ func (r *KeystoreSentinelReconciler) Reconcile(ctx context.Context, req ctrl.Req
 							certs, err := ProcessKeystoreIntoCertificates(keystoreObj)
 							if err != nil {
 								lggrK.Error(err, "Failed to process keystore into certificates!")
+								return ctrl.Result{}, err
 							}
 							for keystoreAlias, certSlice := range certs {
 
@@ -258,6 +261,7 @@ func (r *KeystoreSentinelReconciler) Reconcile(ctx context.Context, req ctrl.Req
 			err = cl.List(context.Background(), configMapList, targetListOptions)
 			if err != nil {
 				lggrK.Error(err, "Failed to list ConfigMaps in ns/"+el)
+				return ctrl.Result{}, err
 			}
 
 			// Loop through ConfigMaps
@@ -282,6 +286,7 @@ func (r *KeystoreSentinelReconciler) Reconcile(ctx context.Context, req ctrl.Req
 						certs, err := ProcessKeystoreIntoCertificates(keystoreObj)
 						if err != nil {
 							lggrK.Error(err, "Failed to process keystore into certificates!")
+							return ctrl.Result{}, err
 						}
 
 						for keystoreAlias, certSlice := range certs {

@@ -13,7 +13,8 @@ This Operator provides two Custom Resource Definitions (CRDs):
 
 ## Documentation
 
-- [Quickstart](https://github.com/PolyglotSystems/certificate-sentinel-operator/tree/main/docs/quickstart.md)
+- [Quickstart - CertificateSentinel](https://github.com/PolyglotSystems/certificate-sentinel-operator/tree/main/docs/quickstart-certificatesentinel.md)
+- [Quickstart - KeystoreSentinel](https://github.com/PolyglotSystems/certificate-sentinel-operator/tree/main/docs/quickstart-keystoresentinel.md)
 - [SMTP Configuration](https://github.com/PolyglotSystems/certificate-sentinel-operator/tree/main/docs/smtp-configuration.md)
 - [Examples - SSL Certificates for CertificateSentinel](https://github.com/PolyglotSystems/certificate-sentinel-operator/tree/main/examples/ssl_certificates/)
 - [Examples - Keystore for KeystoreSentinel](https://github.com/PolyglotSystems/certificate-sentinel-operator/tree/main/examples/java_keystore/)
@@ -79,3 +80,18 @@ git push origin vX.Y.Z
 ```
 
 So long as you have the `REGISTRY_USERNAME`, `REGISTRY_TOKEN`, and `GHUB_TOKEN` set up as GitHub Action Secrets then the automation workflow should kick off.
+
+## Sample Build Script & Release
+
+It's pretty easy to figure out the release process for the repos in use:
+
+```yaml
+
+make bundle && \
+sudo make podman-build && \
+sudo make podman-push && \
+sudo make bundle-build && \
+sudo make bundle-push && \
+sudo make catalog-build && \
+sudo make catalog-push
+```

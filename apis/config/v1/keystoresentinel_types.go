@@ -125,7 +125,7 @@ type KeystoreInformation struct {
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 
-// KeystoreSentinel is the Schema for the keystoresentinels API
+// KeystoreSentinel scans Secrets and ConfigMaps for Java Keystores with certificates that are expiring and reports on them
 type KeystoreSentinel struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

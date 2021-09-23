@@ -169,6 +169,7 @@ func (r *CertificateSentinelReconciler) Reconcile(ctx context.Context, req ctrl.
 			err = cl.List(context.Background(), secretList, targetListOptions)
 			if err != nil {
 				lggr.Error(err, "Failed to list secrets in namespace/"+el)
+				return ctrl.Result{}, err
 			}
 
 			// Loop through Secrets
@@ -233,6 +234,7 @@ func (r *CertificateSentinelReconciler) Reconcile(ctx context.Context, req ctrl.
 			err = cl.List(context.Background(), configMapList, targetListOptions)
 			if err != nil {
 				lggr.Error(err, "Failed to list ConfigMaps in ns/"+el)
+				return ctrl.Result{}, err
 			}
 
 			// Loop through ConfigMaps

@@ -92,7 +92,7 @@ type CertificateInformation struct {
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 
-// CertificateSentinel is the Schema for the certificatesentinels API
+// CertificateSentinel scans Secrets and ConfigMaps for x509 Certificates that are expiring and reports on them
 type CertificateSentinel struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

@@ -8,3 +8,9 @@ spec:
   image: quay.io/polyglotsystems/operator-catalog:v0.0.2
   displayName: Polyglot Systems Operators
   publisher: Polyglot Systems
+  icon:
+    base64data: ''
+    mediatype: ''
+  updateStrategy:
+    registryPoll:
+      interval: 10m0s

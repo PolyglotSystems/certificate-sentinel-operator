@@ -64,7 +64,7 @@ func SetupSingleLabelSelector(targetLabels []configv1.LabelSelector) (labels.Sel
 }
 
 // SetupLabelSelectors wraps some shared functions
-func SetupLabelSelectors(targetLabels []configv1.LabelSelector, targetNamespaceLabels []configv1.LabelSelector, lggr logr.Logger) (labels.Selector, labels.Selector) {
+func SetupLabelSelectors(targetLabels []configv1.LabelSelector, targetNamespaceLabels []configv1.LabelSelector, lgr logr.Logger) (labels.Selector, labels.Selector) {
 	targetLabelSelectorFN := labels.NewSelector()
 	targetNamespaceLabelSelectorFN := labels.NewSelector()
 	// Create the label selectors for the target label filter
@@ -74,7 +74,7 @@ func SetupLabelSelectors(targetLabels []configv1.LabelSelector, targetNamespaceL
 			activeFilter := returnFilterType(label.Filter)
 			req, err := labels.NewRequirement(label.Key, activeFilter, label.Values)
 			if err != nil {
-				lggr.Error(err, "Failed to build labelSelector requirement for target!")
+				lgr.Error(err, "Failed to build labelSelector requirement for target!")
 			}
 			targetLabelSelectorFN = targetLabelSelectorFN.Add(*req)
 		}
@@ -87,7 +87,7 @@ func SetupLabelSelectors(targetLabels []configv1.LabelSelector, targetNamespaceL
 			activeFilter := returnFilterType(label.Filter)
 			req, err := labels.NewRequirement(label.Key, activeFilter, label.Values)
 			if err != nil {
-				lggr.Error(err, "Failed to build labelSelector requirement for namespace!")
+				lgr.Error(err, "Failed to build labelSelector requirement for namespace!")
 			}
 			targetNamespaceLabelSelectorFN = targetNamespaceLabelSelectorFN.Add(*req)
 		}
@@ -122,7 +122,7 @@ func returnFilterType(labelFilter string) selection.Operator {
 }
 
 // SetupNamespaceSlice sets up the shared effectiveNamespaces from the provided YAML structures
-func SetupNamespaceSlice(namespaces []string, cl client.Client, lggr logr.Logger, setLogLevel int, serviceAccount string, targetNamespaceLabelSelector labels.Selector, scanningInterval int) ([]string, error) {
+func SetupNamespaceSlice(namespaces []string, cl client.Client, lgr logr.Logger, setLogLevel int, serviceAccount string, targetNamespaceLabelSelector labels.Selector, scanningInterval int) ([]string, error) {
 
 	var effectiveNamespaces []string
 
@@ -138,20 +138,20 @@ func SetupNamespaceSlice(namespaces []string, cl client.Client, lggr logr.Logger
 			activeNamespaceDisplayName = "*"
 		}
 
-		LogWithLevel("Querying for namespace/"+activeNamespaceDisplayName+" with sa/"+serviceAccount, 3, lggr, setLogLevel)
+		LogWithLevel("Querying for namespace/"+activeNamespaceDisplayName+" with sa/"+serviceAccount, 3, lgr, setLogLevel)
 		// Get Namespace with the cached context
 		namespaceListOptions := &client.ListOptions{Namespace: activeNamespace, LabelSelector: targetNamespaceLabelSelector}
 		err := cl.List(context.Background(), namespaceList, namespaceListOptions)
 		if err != nil {
-			lggr.Error(err, "Failed to list namespace in cluster!")
-			lggr.Info("Running reconciler again in " + strconv.Itoa(scanningInterval) + "s")
+			lgr.Error(err, "Failed to list namespace in cluster!")
+			lgr.Info("Running reconciler again in " + strconv.Itoa(scanningInterval) + "s")
 			time.Sleep(time.Second * time.Duration(scanningInterval))
 			return []string{}, err
 		}
 		// Loop through NamespaceList, create the effectiveNamespaces slice
 		for _, el := range namespaceList.Items {
 			if !defaults.ContainsString(effectiveNamespaces, el.Name) {
-				LogWithLevel("Adding ns/"+el.Name+" to scope", 3, lggr, setLogLevel)
+				LogWithLevel("Adding ns/"+el.Name+" to scope", 3, lgr, setLogLevel)
 				effectiveNamespaces = append(effectiveNamespaces, el.Name)
 			}
 		}
@@ -206,7 +206,6 @@ func GetServiceAccount(serviceAccount string, namespace string, clnt client.Clie
 	}, targetServiceAccount)
 
 	if err != nil {
-		lggr.Error(err, "Failed to get serviceaccount/"+serviceAccount+" in namespace/"+namespace)
 		return targetServiceAccount, err
 	}
 	return targetServiceAccount, nil
@@ -221,7 +220,6 @@ func GetSecret(name string, namespace string, clnt client.Client) (*corev1.Secre
 	}, targetSecret)
 
 	if err != nil {
-		lggr.Error(err, "Failed to get secret/"+name+" in namespace/"+namespace)
 		return targetSecret, err
 	}
 	return targetSecret, nil
@@ -236,17 +234,19 @@ func GetConfigMap(name string, namespace string, clnt client.Client) (*corev1.Co
 	}, targetConfigMap)
 
 	if err != nil {
-		lggr.Error(err, "Failed to get configmap/"+name+" in namespace/"+namespace)
 		return targetConfigMap, err
 	}
 	return targetConfigMap, nil
 }
 
 // SetupNewClient takes a cached client, serviceAccount name, the namespace it is in, the cluster endpoint and API Path and creates a new Kubernetes client to act against the API on
-func SetupNewClient(lggr logr.Logger, setLogLevel int, r client.Client, serviceAccount string, serviceAccountNamespace string, clusterEndpoint string, apiPath string) (client.Client, error) {
+func SetupNewClient(lgr logr.Logger, setLogLevel int, r client.Client, serviceAccount string, serviceAccountNamespace string, clusterEndpoint string, apiPath string) (client.Client, error) {
 	// Get ServiceAccount
-	LogWithLevel("Using ServiceAccount: "+serviceAccount, 2, lggr, setLogLevel)
-	targetServiceAccount, _ := GetServiceAccount(serviceAccount, serviceAccountNamespace, r)
+	LogWithLevel("Using ServiceAccount: "+serviceAccount, 2, lgr, setLogLevel)
+	targetServiceAccount, err := GetServiceAccount(serviceAccount, serviceAccountNamespace, r)
+	if err != nil {
+		return *new(client.Client), err
+	}
 	var serviceAccountSecretName string
 	targetServiceAccountSecret := &corev1.Secret{}
 
@@ -256,7 +256,7 @@ func SetupNewClient(lggr logr.Logger, setLogLevel int, r client.Client, serviceA
 		if secret.Type == "kubernetes.io/service-account-token" {
 			// Get Secret
 			serviceAccountSecretName = em.Name
-			LogWithLevel("Using Secret: "+serviceAccountSecretName, 2, lggr, setLogLevel)
+			LogWithLevel("Using Secret: "+serviceAccountSecretName, 2, lgr, setLogLevel)
 			targetServiceAccountSecret, _ = GetSecret(serviceAccountSecretName, serviceAccountNamespace, r)
 		}
 	}
