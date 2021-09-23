@@ -9,6 +9,7 @@ on:
     paths-ignore:
       - 'README.md'
       - 'docs/'
+      - 'deploy/'
       - 'examples/'
   # For systems with an upstream API that could drift unexpectedly (like most SaaS systems, etc.),
   # we recommend testing at a regular interval not necessarily tied to code changes. This will 
@@ -149,18 +150,18 @@ jobs:
         tags: ${{ steps.bundlemeta.outputs.tags }}
         labels: ${{ steps.bundlemeta.outputs.labels }}
 
-#  # Publish a release
-#  publish-release:
-#    name: Publish Release
-#    runs-on: ubuntu-latest
-#    timeout-minutes: 2
-#    needs: [test, build-operator, build-operator-bundle]
-#    steps:
-#
-#    - name: Check out code into the Go module directory
-#      uses: actions/checkout@v2.3.4
-#
-#    - name: Create a new Release with the newly built bundle
-#      uses: ncipollo/release-action@v1
-#      with:
-#        token: ${{ secrets.GHUB_TOKEN }}
+  # Publish a release
+  publish-release:
+    name: Publish Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    needs: [test, build-operator, build-operator-bundle]
+    steps:
+
+    - name: Check out code into the Go module directory
+      uses: actions/checkout@v2.3.4
+
+    - name: Create a new Release with the newly built bundle
+      uses: ncipollo/release-action@v1
+      with:
+        token: ${{ secrets.GHUB_TOKEN }}

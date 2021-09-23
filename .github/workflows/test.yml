@@ -4,9 +4,12 @@
 name: Tests
 on:
   push:
+    tags-ignore:
+      - 'v*'
     paths-ignore:
       - 'README.md'
       - 'docs/'
+      - 'deploy/'
       - 'examples/'
   # For systems with an upstream API that could drift unexpectedly (like most SaaS systems, etc.),
   # we recommend testing at a regular interval not necessarily tied to code changes. This will 
