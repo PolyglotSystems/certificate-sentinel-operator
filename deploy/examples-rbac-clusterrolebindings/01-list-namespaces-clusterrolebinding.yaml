@@ -1,0 +1,13 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: list-namespaces-cert-sentinel
+subjects:
+- kind: ServiceAccount
+  name: some-service-account
+  namespace: cert-sentinel
+roleRef:
+  kind: ClusterRole
+  name: namespace-reader
+  apiGroup: rbac.authorization.k8s.io

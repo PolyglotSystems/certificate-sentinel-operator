@@ -2,6 +2,10 @@
 
 This document will help demonstrate the workflow for using this operator to scan a cluster for expiring x509 certificates.
 
+## Prerequisites
+
+- Have the Certificate Sentinel Operator already [deployed on the OpenShift cluster](../deploy/README.md#deploy-to-red-hat-openshift)
+
 ## 1. Create a Namespace
 
 *THIS!  IS!  KUBERNETES!*

@@ -13,11 +13,12 @@ This Operator provides two Custom Resource Definitions (CRDs):
 
 ## Documentation
 
+- [Deployment Examples](https://github.com/PolyglotSystems/certificate-sentinel-operator/tree/main/deploy/)
 - [Quickstart - CertificateSentinel](https://github.com/PolyglotSystems/certificate-sentinel-operator/tree/main/docs/quickstart-certificatesentinel.md)
 - [Quickstart - KeystoreSentinel](https://github.com/PolyglotSystems/certificate-sentinel-operator/tree/main/docs/quickstart-keystoresentinel.md)
 - [SMTP Configuration](https://github.com/PolyglotSystems/certificate-sentinel-operator/tree/main/docs/smtp-configuration.md)
-- [Examples - SSL Certificates for CertificateSentinel](https://github.com/PolyglotSystems/certificate-sentinel-operator/tree/main/examples/ssl_certificates/)
-- [Examples - Keystore for KeystoreSentinel](https://github.com/PolyglotSystems/certificate-sentinel-operator/tree/main/examples/java_keystore/)
+- [Examples - SSL Certificates for CertificateSentinel](https://github.com/PolyglotSystems/certificate-sentinel-operator/tree/main/deploy/examples-ssl-certificates/)
+- [Examples - Keystore for KeystoreSentinel](https://github.com/PolyglotSystems/certificate-sentinel-operator/tree/main/deploy/examples-java-keystore/)
 - [Full YAML Structure - CertificateSentinel](https://github.com/PolyglotSystems/certificate-sentinel-operator/tree/main/docs/full_yaml_spec-CertificateSentinel.md)
 - [Full YAML Structure - KeystoreSentinel](https://github.com/PolyglotSystems/certificate-sentinel-operator/tree/main/docs/full_yaml_spec-KeystoreSentinel.md)
 
@@ -29,13 +30,13 @@ If you already have an OpenShift cluster or Kubernetes cluster with OLM deployed
 
 ```bash
 # Create the Operator CatalogSource in the openshift-marketplace Namespace/Project
-oc apply -f https://raw.githubusercontent.com/PolyglotSystems/certificate-sentinel-operator/main/deploy/01-catalogsource.yaml -n openshift-marketplace
+oc apply -f https://raw.githubusercontent.com/PolyglotSystems/certificate-sentinel-operator/main/deploy/install-operator/01-catalogsource.yaml -n openshift-marketplace
 
 # Create a Subscription for the Operator (this installs the Operator)
-oc apply -f https://raw.githubusercontent.com/PolyglotSystems/certificate-sentinel-operator/main/deploy/02-subscription.yaml -n openshift-operators
+oc apply -f https://raw.githubusercontent.com/PolyglotSystems/certificate-sentinel-operator/main/deploy/install-operator/02-subscription.yaml -n openshift-operators
 ```
 
-From here you should just need to create the needed RBAC and deploy the CRDs!
+> From here you should just need to create the needed RBAC and deploy the CRDs!
 
 ### Development & Testing Deployment
 

@@ -1,0 +1,14 @@
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: namespace-reader
+rules:
+  - verbs:
+      - get
+      - watch
+      - list
+    apiGroups:
+      - ''
+    resources:
+      - namespaces
