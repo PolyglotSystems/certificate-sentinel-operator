@@ -8,8 +8,8 @@ require (
 	github.com/onsi/gomega v1.10.2
 	github.com/pavel-v-chernykh/keystore-go/v4 v4.1.0
 	github.com/xhit/go-simple-mail/v2 v2.10.0
-	k8s.io/api v0.20.2
-	k8s.io/apimachinery v0.20.2
-	k8s.io/client-go v0.20.2
+	k8s.io/api v0.22.4
+	k8s.io/apimachinery v0.22.4
+	k8s.io/client-go v0.22.4
 	sigs.k8s.io/controller-runtime v0.8.3
 )
